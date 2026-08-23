@@ -18,6 +18,17 @@
 [build.environment]
   NODE_VERSION = "22"
 
+  # The Python bot is not part of this deploy -- Netlify builds only the
+  # dashboard at the repository root. bot/ is excluded from secret scanning
+  # because its .env.example documents key names, and a scanner matching on
+  # names or prefixes flags documentation as a leak.
+  SECRETS_SCAN_OMIT_PATHS = "bot/**,README.md,VERIFIED.md"
+
+  # The dashboard reads Firestore and nothing else. It never calls Anthropic,
+  # so ANTHROPIC_API_KEY must not be set in Netlify at all -- if it is, the
+  # scanner will hunt for that value across the repo and build output.
+  SECRETS_SCAN_OMIT_KEYS = "ANTHROPIC_API_KEY,ODDS_API_KEY,FIREBASE_CREDENTIALS"
+
 [[headers]]
   for = "/*"
   [headers.values]
