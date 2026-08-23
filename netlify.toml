@@ -1,0 +1,26 @@
+# Netlify runs Next.js through the OpenNext adapter, which it installs and
+# configures automatically -- build command and publish directory are detected,
+# so they are deliberately not pinned here.
+#
+# The dashboard reads Firestore server-side via firebase-admin, so the only
+# required setting is FIREBASE_SERVICE_ACCOUNT in the Netlify UI
+# (Site configuration > Environment variables). Set it to the *contents* of the
+# service account JSON on one line, not a file path.
+#
+# Without that variable the site falls back to reading public/data/*.json from
+# the function bundle. That file is gitignored, so on Netlify the fallback
+# yields an empty dashboard rather than stale data -- which is the intended
+# failure mode: better blank than silently out of date.
+
+[build]
+  command = "npm run build"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

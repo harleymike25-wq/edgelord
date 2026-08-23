@@ -1,0 +1,29 @@
+[project]
+name = "edgelord"
+version = "0.1.0"
+description = "NFL betting prediction bot: factor packs in, graded picks out."
+requires-python = ">=3.12"
+dependencies = [
+    "nflreadpy>=0.1.5",
+    "polars>=1.43",
+    "anthropic>=0.121",
+    "httpx>=0.28",
+    "python-dotenv>=1.2",
+    "pyarrow>=25.0",
+    "tzdata>=2025.1",  # Windows ships no system tz database
+]
+
+[project.optional-dependencies]
+# Only needed to mirror to Firestore; edgelord.sync degrades to a local
+# snapshot when this is not installed.
+firebase = ["firebase-admin>=6.5"]
+
+[project.scripts]
+edgelord = "edgelord.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["edgelord*"]
