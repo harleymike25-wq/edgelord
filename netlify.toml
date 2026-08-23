@@ -21,13 +21,19 @@
   # The Python bot is not part of this deploy -- Netlify builds only the
   # dashboard at the repository root. bot/ is excluded from secret scanning
   # because its .env.example documents key names, and a scanner matching on
-  # names or prefixes flags documentation as a leak.
+  # names or prefixes reads documentation as a leak.
   SECRETS_SCAN_OMIT_PATHS = "bot/**,README.md,VERIFIED.md"
 
-  # The dashboard reads Firestore and nothing else. It never calls Anthropic,
-  # so ANTHROPIC_API_KEY must not be set in Netlify at all -- if it is, the
-  # scanner will hunt for that value across the repo and build output.
-  SECRETS_SCAN_OMIT_KEYS = "ANTHROPIC_API_KEY,ODDS_API_KEY,FIREBASE_CREDENTIALS"
+  # Netlify scans for the *values* of every environment variable configured in
+  # the UI, not just key-shaped ones. That makes ordinary settings dangerous to
+  # set here: EDGELORD_EFFORT=medium sends the scanner looking for the word
+  # "medium", which appears in comments and prose throughout the repo, and the
+  # build fails on a false positive.
+  #
+  # None of these belong in Netlify anyway. They configure the Python bot, which
+  # runs on a scheduler elsewhere; the dashboard only ever reads Firestore. The
+  # sole variable this site needs is FIREBASE_SERVICE_ACCOUNT.
+  SECRETS_SCAN_OMIT_KEYS = "ANTHROPIC_API_KEY,ODDS_API_KEY,FIREBASE_CREDENTIALS,EDGELORD_EFFORT,EDGELORD_MODEL,EDGELORD_MONTHLY_BUDGET_USD,EDGELORD_FALLBACK_MODEL,EDGELORD_ODDS_MONTHLY_BUDGET"
 
 [[headers]]
   for = "/*"
