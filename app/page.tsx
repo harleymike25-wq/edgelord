@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { Masthead, SyntheticBanner } from "@/components/Chrome";
-import { loadSeason, predictedWeeks } from "@/lib/data";
+import { lastLoadError, loadSeason, predictedWeeks } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +29,12 @@ export default async function Home() {
   );
 }
 
+/**
+ * Shows the actual reason, not just "no data".
+ *
+ * The cause is always an environment variable you cannot inspect from a
+ * browser, so a blank page is close to undebuggable on a deployed site.
+ */
 function NoData() {
   return (
     <>
@@ -36,10 +42,12 @@ function NoData() {
         <h1>Edgelord</h1>
       </div>
       <div className="empty">
-        <p>No data available.</p>
-        <p>
-          Run <code>edgelord sync</code> to write a snapshot, or set{" "}
-          <code>FIREBASE_SERVICE_ACCOUNT</code> to read from Firestore.
+        <p>No data loaded.</p>
+        {lastLoadError && <p className="reason">{lastLoadError}</p>}
+        <p className="hint">
+          This site reads Firestore server-side. The only variable it needs is{" "}
+          <code>FIREBASE_SERVICE_ACCOUNT</code>, set to the entire contents of
+          your service-account JSON on one line — not a file path.
         </p>
       </div>
     </>

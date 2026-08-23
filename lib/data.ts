@@ -101,15 +101,51 @@ async function loadFromSnapshot(season: number): Promise<SeasonPayload> {
   return { ...(JSON.parse(raw) as SeasonPayload), source: "snapshot" };
 }
 
+/**
+ * Why the last load failed, for display.
+ *
+ * A deployed dashboard that renders "no data" without saying why is close to
+ * useless to debug -- the cause is always in an environment variable you
+ * cannot see from the browser. This carries the reason to the page.
+ */
+export let lastLoadError: string | null = null;
+
+function describe(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e);
+  if (/JSON|Unexpected token/i.test(msg)) {
+    return `FIREBASE_SERVICE_ACCOUNT is set but is not valid JSON. Paste the whole service-account file contents on one line. (${msg})`;
+  }
+  if (/PERMISSION_DENIED|permission/i.test(msg)) {
+    return `Firestore refused the credential. Check the service account belongs to this project and has Firestore access. (${msg})`;
+  }
+  if (/UNAUTHENTICATED|invalid_grant|credential/i.test(msg)) {
+    return `Firestore rejected the credential -- it may be from a different project, or revoked. (${msg})`;
+  }
+  if (/Cannot find module|firebase-admin/i.test(msg)) {
+    return `firebase-admin is not installed in the deploy. (${msg})`;
+  }
+  return msg;
+}
+
 export async function availableSeasons(): Promise<number[]> {
   if (firestoreConfigured()) {
-    const dbc = await firestore();
-    const snap = await dbc.collection("meta").get();
-    const seasons = snap.docs
-      .map((d: { id: string }) => Number(d.id.replace("record-", "")))
-      .filter((n: number) => Number.isFinite(n))
-      .sort((a: number, b: number) => a - b);
-    if (seasons.length) return seasons;
+    try {
+      const dbc = await firestore();
+      const snap = await dbc.collection("meta").get();
+      const seasons = snap.docs
+        .map((d: { id: string }) => Number(d.id.replace("record-", "")))
+        .filter((n: number) => Number.isFinite(n))
+        .sort((a: number, b: number) => a - b);
+      if (seasons.length) return seasons;
+      lastLoadError =
+        "Connected to Firestore but the meta collection is empty. Run `edgelord sync`.";
+    } catch (e) {
+      lastLoadError = describe(e);
+      return [];
+    }
+  } else {
+    lastLoadError =
+      "FIREBASE_SERVICE_ACCOUNT is not set, so the site fell back to the local JSON snapshot -- which is gitignored and therefore absent from this deploy. Set it in Site configuration > Environment variables to the contents of your service-account JSON.";
   }
   return snapshotSeasons();
 }
@@ -120,10 +156,13 @@ export async function loadSeason(season?: number): Promise<SeasonPayload | null>
 
   const target = season && seasons.includes(season) ? season : seasons[seasons.length - 1];
   try {
-    return firestoreConfigured()
+    const payload = firestoreConfigured()
       ? await loadFromFirestore(target)
       : await loadFromSnapshot(target);
-  } catch {
+    lastLoadError = null;
+    return payload;
+  } catch (e) {
+    lastLoadError = describe(e);
     return null;
   }
 }

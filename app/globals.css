@@ -201,6 +201,13 @@ h3.section { font-size: .82rem; text-transform: uppercase; letter-spacing: .05em
          border-radius: var(--radius); padding: 2rem 1.25rem; text-align: center; color: var(--muted); }
 .empty code { background: var(--panel-2); padding: .12rem .4rem; border-radius: 4px;
               color: var(--accent); font-size: .85rem; }
+.empty .reason {
+  text-align: left; color: var(--warn); background: #241d0c;
+  border: 1px solid #4a3a12; border-radius: 6px;
+  padding: .7rem .85rem; margin: 1rem auto; max-width: 60ch;
+  font-size: .85rem; line-height: 1.6;
+}
+.empty .hint { font-size: .82rem; color: var(--dim); max-width: 60ch; margin: .8rem auto 0; }
 
 @media (max-width: 560px) {
   .card .top { flex-direction: column; gap: .5rem; }
