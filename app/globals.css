@@ -121,6 +121,53 @@ a.card:hover { border-color: #3d454e; background: var(--panel-2); }
   border: 1px solid var(--line); border-radius: 4px; padding: .12rem .4rem;
 }
 
+/* ---- matchup tables ---- */
+.mismatch {
+  font-size: .88rem; color: var(--accent); margin: 0 0 1rem;
+  padding: .5rem .7rem; background: #16232a; border: 1px solid #24404e;
+  border-radius: 6px;
+}
+.pairing { margin-bottom: 1.4rem; }
+.pairing-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: .8rem; flex-wrap: wrap; margin-bottom: .35rem;
+}
+.pairing-name { font-size: .9rem; font-weight: 600; }
+.pairing-verdict { font-size: .78rem; color: var(--muted); }
+.pairing-verdict.pos { color: var(--win); }
+.pairing-verdict.neg { color: var(--loss); }
+
+table.matchup { width: 100%; border-collapse: collapse; font-size: .84rem; }
+table.matchup th, table.matchup td {
+  text-align: right; padding: .3rem .5rem;
+  border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums;
+}
+table.matchup th:first-child, table.matchup td:first-child {
+  text-align: left; color: var(--muted);
+}
+table.matchup th {
+  color: var(--dim); font-weight: 500; font-size: .7rem;
+  text-transform: uppercase; letter-spacing: .04em;
+}
+table.matchup td.dim { color: var(--dim); }
+table.matchup td.pos { color: var(--win); }
+table.matchup td.neg { color: var(--loss); }
+table.matchup .edge { color: var(--dim); font-size: .78rem; }
+
+.pairing-extra {
+  display: flex; flex-wrap: wrap; gap: .2rem 1.2rem;
+  font-size: .78rem; color: var(--muted); margin-top: .45rem;
+}
+.pairing-extra .neg { color: var(--loss); }
+
+table.h2h td:nth-child(2) { text-align: left; }
+
+@media (max-width: 560px) {
+  table.matchup { font-size: .76rem; }
+  table.matchup th, table.matchup td { padding: .28rem .3rem; }
+  table.matchup .edge { display: none; }
+}
+
 /* ---- confidence ---- */
 .dots { display: inline-flex; gap: 2px; margin-right: .35rem; vertical-align: middle; }
 .dots i { width: 5px; height: 5px; border-radius: 50%; background: #33383e; display: block; }

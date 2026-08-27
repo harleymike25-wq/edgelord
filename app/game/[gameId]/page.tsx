@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { Masthead, SyntheticBanner } from "@/components/Chrome";
 import { ConvictionTag, PickBadge } from "@/components/GameCard";
+import { HeadToHeadTable, MatchupTables } from "@/components/MatchupTable";
 import {
   clv,
   finalScore,
@@ -119,6 +120,9 @@ export default async function GamePage({
               <dt>Model</dt>
               <dd>{p.model}</dd>
             </dl>
+
+            {game.unit_ratings && <MatchupTables ratings={game.unit_ratings} />}
+            {game.head_to_head && <HeadToHeadTable h2h={game.head_to_head} />}
 
             {p.key_factors.length > 0 && (
               <div className="factors">

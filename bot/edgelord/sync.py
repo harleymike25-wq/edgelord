@@ -70,7 +70,7 @@ def _game_documents(conn, season: int, week: int | None) -> list[dict]:
                p.pick_type, p.pick_side, p.conviction, p.line_at_pick,
                p.price_at_pick, p.confidence, p.projected_margin,
                p.projected_total, p.headline, p.paragraph, p.key_factors,
-               f.data_gaps,
+               f.data_gaps, f.payload,
                r.pick_result, r.profit_units, r.clv_points,
                r.closing_line, r.closing_total
         FROM games g
@@ -116,6 +116,22 @@ def _game_documents(conn, season: int, week: int | None) -> list[dict]:
             "prediction": None,
             "result": None,
         }
+        # Lift the unit ratings out of the stored feature pack so the dashboard
+        # can show the matchup the pick was actually argued from. Only this
+        # slice is mirrored -- the full pack is tens of kilobytes of inputs
+        # nobody reads on a phone.
+        if r.get("payload"):
+            try:
+                pack = json.loads(r["payload"])
+                units = (pack.get("matchup") or {}).get("unit_ratings")
+                if units:
+                    doc["unit_ratings"] = units
+                h2h = (pack.get("matchup") or {}).get("head_to_head")
+                if h2h and h2h.get("meetings"):
+                    doc["head_to_head"] = h2h
+            except (ValueError, TypeError):
+                pass
+
         if r["prediction_id"] is not None:
             doc["prediction"] = {
                 "id": r["prediction_id"],

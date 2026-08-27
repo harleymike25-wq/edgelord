@@ -35,6 +35,58 @@ export interface Result {
   closing_total: number | null;
 }
 
+/** One paired metric: an offence against what that defence allows. */
+export interface UnitMetric {
+  offense: number;
+  defense_allows: number;
+  league_avg: number;
+  /** What this offence projects to do against this defence. */
+  projected: number;
+  /** Relative to league average. Positive favours the offence. */
+  edge: number;
+}
+
+export interface UnitPairing {
+  matchup: string;
+  verdict?: string;
+  epa_per_play?: UnitMetric;
+  success_rate?: UnitMetric;
+  explosive_rate?: UnitMetric;
+  red_zone_td_pct?: UnitMetric;
+  third_down_rate?: UnitMetric;
+  pressure?: {
+    defense_generates: number;
+    offense_allows: number;
+    /** Positive means the pass rush beats the protection. */
+    edge_to_defense: number;
+  };
+  plays_per_game?: { offense: number; defense_faces: number };
+}
+
+export interface UnitRatings {
+  units: UnitPairing[];
+  biggest_mismatch: string | null;
+  note?: string;
+}
+
+export interface H2HMeeting {
+  season: number;
+  week: number;
+  at: string;
+  score: string;
+  spread_line: number | null;
+  winner: string;
+  covered: string;
+  total: number | null;
+  total_line: number | null;
+}
+
+export interface HeadToHead {
+  meetings: number;
+  recent: H2HMeeting[];
+  [key: string]: unknown;
+}
+
 export interface Game {
   game_id: string;
   season: number;
@@ -56,6 +108,9 @@ export interface Game {
   final: { home: number; away: number } | null;
   prediction: Prediction | null;
   result: Result | null;
+  /** Unit-vs-unit ratings lifted from the feature pack the pick was built on. */
+  unit_ratings?: UnitRatings | null;
+  head_to_head?: HeadToHead | null;
 }
 
 export interface Summary {
