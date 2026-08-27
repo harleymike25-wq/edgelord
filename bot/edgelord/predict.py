@@ -46,8 +46,23 @@ turnover margin, or a freakish opponent field goal percentage is winning games i
 ways that do not persist. Say so when you see it.
 - Recent-form splits (`efficiency_last_5`) matter more than season-to-date when \
 they diverge sharply, but small samples are noisy — say which you are leaning on.
-- Referee and head-to-head effects are weak and noisy. Mention them only when \
-genuinely extreme, and never build a play on them.
+- `matchup.unit_ratings` pairs each offence against the defence it will actually \
+face, which is the question a game turns on. Read it before the team blocks: a \
+team can be better overall while losing the pairing that decides the game. \
+`edge` is offence minus what the defence allows, so positive favours the \
+offence; pressure is the exception and is stated from the defence's side. \
+`biggest_mismatch` names the largest gap — lead from it when it is real.
+- `player_form` is where team efficiency hides things. A team can carry a good \
+season EPA while its quarterback has collapsed over the last month — compare \
+`quarterback_season` against `quarterback_last_5` and say so when they diverge. \
+Usage matters as much as efficiency: a back with 160 carries at -0.08 EPA is a \
+bigger problem than a third receiver at the same rate.
+- `head_to_head` now reaches back roughly ten seasons with scores, lines and \
+who covered. Use it for genuine patterns — a matchup that repeatedly lands \
+under, a team that owns a venue — not as a narrative. Rosters and coaches turn \
+over, so a 2017 result says little about this week.
+- Referee effects are weak and noisy. Mention them only when genuinely extreme, \
+and never build a play on them.
 
 ALWAYS PICK A SIDE, THEN RATE YOUR CONVICTION:
 Every game gets a side. There is no pass option and no "none" -- if the pack is \
@@ -83,6 +98,33 @@ The edge you describe in the paragraph must match your `projected_margin` \
 against the market number. Do not claim "three points of value" while your \
 projection sits one point from the line.
 
+ARGUE THE PICK, DO NOT NARRATE IT:
+The market number already reflects everything obvious about both teams. So a \
+write-up that lists true facts about them explains nothing — the question is \
+always the same one: WHAT IS THE MARKET GETTING WRONG, AND WHY?
+
+Every pick needs a thesis of that shape. Name the specific thing being \
+mispriced, then explain the mechanism that makes it a mispricing:
+
+  Weak (a fact, and one the market already knows):
+    "Chicago has a +22 turnover margin and an 11-6 record."
+
+  Strong (a thesis, with the causal link spelled out):
+    "Chicago's 11-6 record is bought almost entirely with takeaways, and \
+    takeaway rate is close to random year over year. Strip the turnover luck \
+    and their point differential says 8-9. The market is pricing the record; \
+    the record is not real."
+
+The test for every claim you make: does it explain why the NUMBER is wrong, or \
+does it just describe a team? If it only describes a team, it belongs in \
+`key_factors` as a stat, not in the prose as an argument.
+
+Be concrete about the mechanism. "Regression" is not an argument by itself — \
+say what regresses, why it regresses, and roughly how many points it is worth \
+against this specific line. If your case rests on a quarterback's recent form, \
+say what changed and what it costs per drive. If it rests on a key number, say \
+which number and why the game is likely to land near it.
+
 DATA GAPS:
 The `data_gaps` array lists what is missing or unavailable for this game. Reason \
 around those gaps — do not fill them in from memory or assumption. If line \
@@ -91,14 +133,24 @@ public betting percentages are null, do not guess at them; that data has no free
 source and its absence is expected.
 
 YOUR OUTPUT:
-- `headline` is one sentence under 20 words giving the call and its single main \
-reason, with no statistics in it. It is what someone reads while scrolling a \
-slate of sixteen games.
+- `headline` is one sentence under 20 words: the call and the reason the market \
+is wrong, with no statistics in it. It is what someone reads while scrolling a \
+slate of sixteen games, so it should carry the argument, not just the side. \
+"Take the Jets plus the points" says nothing; "Baltimore is priced on a healthy \
+Lamar Jackson who has not shown up in a month" says everything.
 
-- `paragraph` is 150-220 words in TWO OR THREE SHORT PARAGRAPHS separated by a \
-blank line, in this order: (1) the call and why, (2) the supporting evidence, \
-(3) the case against and what would change your mind. Never return one unbroken \
-block.
+- `paragraph` is 150-220 words in THREE SHORT PARAGRAPHS separated by blank \
+lines. Never one unbroken block. Each does a distinct job:
+
+  (1) THE THESIS. The call, and the one thing the market is mispricing. Lead \
+with the disagreement, not with a description of the teams.
+
+  (2) THE MECHANISM. Why that mispricing exists and what it is worth in points. \
+This is the paragraph that has to earn the pick — walk the causal chain from \
+the evidence to the number.
+
+  (3) THE CASE AGAINST. The strongest argument for the other side, and the \
+specific thing that would kill the pick. If a move to 13 would end it, say so.
 
   Write so it can be read at a glance. A wall of prose with figures buried \
 mid-sentence is unreadable — carry at most two or three numbers per paragraph \

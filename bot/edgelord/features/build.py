@@ -19,10 +19,23 @@ import polars as pl
 
 from .. import config
 from ..sources import nflverse, stadiums, weather
-from . import context, efficiency, market, regression, roster, situational
+from . import (
+    context,
+    efficiency,
+    market,
+    matchup,
+    players,
+    regression,
+    roster,
+    situational,
+)
 
 # Recency window used alongside season-to-date numbers.
 RECENT_WEEKS = 5
+
+# How many seasons of schedules to load for head-to-head history. Cheap: a
+# season of schedules is ~285 rows against ~50,000 for play-by-play.
+H2H_SEASONS = 10
 # Positions whose absence actually moves a line.
 KEY_POSITIONS = ("QB", "RB", "WR", "TE", "T", "G", "C", "DE", "DT", "LB", "CB", "S", "K")
 
@@ -107,10 +120,18 @@ class FeatureBuilder:
 
     def __init__(self, seasons: list[int], *, refresh: bool = False):
         self.seasons = sorted(seasons)
+
+        # Play-by-play is the expensive pull (~50k rows a season) so it stays
+        # on the narrow window the efficiency metrics need. Schedules are ~285
+        # rows a season, which makes a decade of them essentially free -- and a
+        # head-to-head history two seasons deep is barely a history at all.
         self.pbp = nflverse.pbp(self.seasons, refresh=refresh)
-        self.schedules = nflverse.schedules(self.seasons, refresh=refresh)
         self.injuries = nflverse.injuries(self.seasons, refresh=refresh)
         self.ftn = nflverse.ftn_charting(self.seasons, refresh=refresh)
+
+        newest = self.seasons[-1]
+        history = list(range(newest - H2H_SEASONS + 1, newest + 1))
+        self.schedules = nflverse.schedules(history, refresh=refresh)
         self._eff_cache: dict = {}
         self._reg_cache: dict = {}
         self._continuity: dict | None = None
@@ -216,6 +237,14 @@ class FeatureBuilder:
             "depth_chart": depth or None,
         }
 
+        # Who is actually producing the offence, and whether they still are.
+        # Team efficiency hides a quarterback who has fallen apart in a month.
+        form = players.profile(self.pbp, team, season, week, recent_weeks=RECENT_WEEKS)
+        if form:
+            block["player_form"] = form
+        elif week > 1:
+            gaps.append(f"{team}: no player-level data yet in {season}")
+
         if cont:
             block["roster_turnover"] = {**cont, "reading": _continuity_reading(
                 cont.get("overall_continuity")
@@ -292,6 +321,9 @@ class FeatureBuilder:
         if ref is None:
             gaps.append("referee not yet announced")
 
+        home_block = self._team_block(game, home, gaps)
+        away_block = self._team_block(game, away, gaps)
+
         h2h = context.head_to_head(self.schedules, home, away, game["season"], game["week"])
         if not h2h["meetings"]:
             gaps.append(
@@ -320,10 +352,18 @@ class FeatureBuilder:
             "officiating": ref,
             "matchup": {
                 **context.divisional_context(home, away),
+                # Unit against unit, computed rather than left for the model to
+                # difference across two separate team blocks.
+                "unit_ratings": matchup.ratings(
+                    home,
+                    away,
+                    home_block.get("efficiency_season") or {},
+                    away_block.get("efficiency_season") or {},
+                ),
                 "head_to_head": h2h,
             },
-            "home": self._team_block(game, home, gaps),
-            "away": self._team_block(game, away, gaps),
+            "home": home_block,
+            "away": away_block,
             "data_gaps": gaps,
         }
 

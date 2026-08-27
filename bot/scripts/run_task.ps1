@@ -14,7 +14,12 @@ param(
     [string]$Job,
 
     [int]$Week,
-    [int]$Season
+    [int]$Season,
+
+    # Overrides the run label, which otherwise comes from the current weekday.
+    # Task Scheduler fires on the right day so the default is correct there;
+    # a manual `run.ps1 thursday` on a Tuesday needs to say so explicitly.
+    [string]$Label
 )
 
 $ErrorActionPreference = 'Stop'
@@ -84,7 +89,7 @@ switch ($Job) {
         # Wednesday, Thursday and Monday: refresh, re-poll, re-predict movers.
         Invoke-Edgelord @('refresh') | Out-Null
         if (-not $Week) { $s, $w = Get-CurrentWeek } else { $s, $w = $Season, $Week }
-        $label = (Get-Date).DayOfWeek.ToString().ToLower()
+        $label = if ($Label) { $Label } else { (Get-Date).DayOfWeek.ToString().ToLower() }
         Invoke-Edgelord @('poll-odds') | Out-Null
         Invoke-Edgelord @('grade') | Out-Null
         # Only re-predict games whose number crossed a key value since Sunday.

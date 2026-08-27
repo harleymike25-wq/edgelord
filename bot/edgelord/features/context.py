@@ -35,7 +35,7 @@ def _before(games: pl.DataFrame, season: int, week: int) -> pl.DataFrame:
 
 
 def head_to_head(
-    games: pl.DataFrame, home: str, away: str, season: int, week: int, *, limit: int = 6
+    games: pl.DataFrame, home: str, away: str, season: int, week: int, *, limit: int = 10
 ) -> dict:
     """Recent meetings between these two, straight up and against the spread."""
     hist = _with_ats(_before(games, season, week)).filter(
