@@ -76,12 +76,19 @@ export default async function GamePage({
                 {p.projected_total.toFixed(1)}
               </dd>
 
-              <dt>Closing line</dt>
+              {/* Only a played game has a closing line. Before kickoff this
+                  field is the current consensus, and calling it "closing" makes
+                  the page assert something it cannot know yet -- which is also
+                  why CLV reads 0.0 on ungraded picks. */}
+              <dt>{game.final ? "Closing line" : "Current line"}</dt>
               <dd>
                 {game.closing_spread_home === null
                   ? "—"
                   : `${game.home_team} ${signed(-game.closing_spread_home)}`}
                 {game.closing_total !== null && ` · O/U ${game.closing_total}`}
+                <span className="source">
+                  {game.final ? " · nflverse" : " · nflverse consensus, not a book"}
+                </span>
               </dd>
 
               {score && (

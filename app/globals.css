@@ -351,3 +351,4 @@ table.decision td.weight { text-transform: uppercase; font-size: .72rem; letter-
 }
 .turnover-team table.roster { margin-top: .5rem; }
 table.roster th[scope="row"] { font-weight: 500; }
+.kv .source { color: var(--dim); font-size: .78rem; }

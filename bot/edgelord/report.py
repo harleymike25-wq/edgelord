@@ -103,7 +103,9 @@ def _tables_html(tables: list[dict]) -> str:
         if t.get("note"):
             parts.append(f"<p class='measure-note'>{html.escape(str(t['note']))}</p>")
     return (
-        "<details class='measures'><summary>All measurements "
+        # Open by default: this is the evidence the pick is checked against,
+        # and a disclosure the reader has to find is the same as not shipping it.
+        "<details class='measures' open><summary>All measurements "
         f"({len(tables)} tables)</summary>{''.join(parts)}</details>"
     )
 
