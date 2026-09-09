@@ -23,6 +23,8 @@ export interface Prediction {
   /** Two or three short paragraphs separated by a blank line. */
   paragraph: string;
   key_factors: string[];
+  /** The model's own ledger of what it weighed, including what argued against it. */
+  decision_table?: DecisionRow[];
   data_gaps: string[];
 }
 
@@ -111,6 +113,98 @@ export interface Game {
   /** Unit-vs-unit ratings lifted from the feature pack the pick was built on. */
   unit_ratings?: UnitRatings | null;
   head_to_head?: HeadToHead | null;
+  /** Every input that moved the number, not just the ones the prose named. */
+  factors?: Factors | null;
+}
+
+export interface DecisionRow {
+  factor: string;
+  reading: string;
+  /** Team abbreviation this factor points to, or "neither". */
+  favors: string;
+  weight: "decisive" | "strong" | "moderate" | "slight" | "none";
+}
+
+export interface RosterMove {
+  player: string;
+  position: string | null;
+  snap_pct_2025: number | null;
+  side: "offense" | "defense";
+  /** Departures carry where they went; arrivals carry where they came from. */
+  now?: string | null;
+  from?: string | null;
+}
+
+export interface RosterTurnover {
+  offense_continuity: number | null;
+  defense_continuity: number | null;
+  overall_continuity: number | null;
+  departures: RosterMove[];
+  arrivals: RosterMove[];
+  reading?: string | null;
+}
+
+export interface PriorSeasonRecord {
+  wins: number;
+  losses: number;
+  ties: number;
+  points_for: number;
+  points_against: number;
+  point_diff_per_game: number | null;
+  win_pct: number | null;
+  pythagorean_win_pct: number | null;
+  pythagorean_delta: number | null;
+  one_score_wins: number;
+  one_score_losses: number;
+  turnover_margin: number | null;
+  own_fg_pct: number | null;
+  opp_fg_pct: number | null;
+}
+
+export interface Weather {
+  roof: string | null;
+  indoor: boolean;
+  source?: string | null;
+  note?: string | null;
+  temp_f?: number | null;
+  wind_mph?: number | null;
+  wind_gust_mph?: number | null;
+  precip_probability_pct?: number | null;
+  precip_inches?: number | null;
+  humidity_pct?: number | null;
+}
+
+export interface SituationSide {
+  rest_days: number | null;
+  off_bye: boolean;
+  short_week: boolean;
+  travel_miles: number | null;
+  timezone_shift_hours: number | null;
+  altitude_change_ft: number | null;
+  consecutive_road_games: number | null;
+}
+
+export interface Situation {
+  kickoff_slot: string | null;
+  is_primetime: boolean;
+  neutral_site: boolean;
+  divisional: boolean;
+  venue: string | null;
+  home: SituationSide;
+  away: SituationSide;
+}
+
+export interface Factors {
+  weather?: Weather | null;
+  situation?: Situation | null;
+  home?: {
+    roster_turnover?: RosterTurnover | null;
+    prior_season_record?: PriorSeasonRecord | null;
+  } | null;
+  away?: {
+    roster_turnover?: RosterTurnover | null;
+    prior_season_record?: PriorSeasonRecord | null;
+  } | null;
 }
 
 export interface Summary {

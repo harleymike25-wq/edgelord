@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { Masthead, SyntheticBanner, WeekNav } from "@/components/Chrome";
 import { GameCard } from "@/components/GameCard";
+import { GlossaryLink } from "@/components/Glossary";
 import { EvidenceBadge, Strip } from "@/components/Stats";
 import { gamesForWeek, loadSeason, predictedWeeks } from "@/lib/data";
 
@@ -61,6 +62,21 @@ export default async function WeekPage({
       {games.map((g) => (
         <GameCard key={g.game_id} game={g} />
       ))}
+
+      {/* Footer, below the slate: reference material for anyone who wants it,
+          rather than something to read past on the way to the picks. */}
+      <div className="primer">
+        <p>
+          Picks lean on a handful of regression measures, the loudest being{" "}
+          <strong>Pythagorean win expectation</strong> — the record a team&rsquo;s
+          points scored and allowed say it <em>should</em> have. A side sitting
+          well above its Pythagorean number has been winning games its scoring
+          does not justify, usually by going unbeaten in one-score finishes, and
+          that is the least repeatable way to win. The market tends to price the
+          record; the record is often not real.
+        </p>
+        <GlossaryLink />
+      </div>
     </>
   );
 }

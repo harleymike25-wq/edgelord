@@ -166,7 +166,16 @@ the two, always with a side in `pick_side`.
 - `key_factors` is 2-5 short phrases naming the specific inputs you leaned on, \
 each carrying its number: "pythagorean delta +0.21", "47% defensive continuity", \
 "line sits on 3". These are rendered as tags beside the write-up, so this is \
-where precise figures belong rather than in the prose.\
+where precise figures belong rather than in the prose.
+- `decision_table` is the ledger behind the call: 5-10 rows, one per factor \
+you actually weighed. Unlike the paragraph, which argues a case, this must \
+include the factors that cut against your pick and the ones that turned out \
+not to matter -- a table showing only supporting evidence is not a record of \
+a decision. Set `favors` to the team abbreviation a factor points to, or \
+"neither". Set `weight` honestly: most rows in a coin-flip game are "slight" \
+or "moderate", and "decisive" should appear at most once. If a factor was \
+unavailable, say so in `reading` and give it weight "none" rather than \
+omitting the row.\
 """
 
 RESPONSE_SCHEMA = {
@@ -228,6 +237,37 @@ RESPONSE_SCHEMA = {
             "items": {"type": "string"},
             "description": "2-5 short phrases naming the inputs that drove the pick.",
         },
+        "decision_table": {
+            "type": "array",
+            "description": (
+                "5-10 rows auditing the decision, including factors that argued "
+                "against the pick and factors that were unavailable."
+            ),
+            "items": {
+                "type": "object",
+                "properties": {
+                    "factor": {
+                        "type": "string",
+                        "description": "The input, named plainly: 'Pythagorean regression', 'Weather'.",
+                    },
+                    "reading": {
+                        "type": "string",
+                        "description": "What it says, carrying the figure. Under 15 words.",
+                    },
+                    "favors": {
+                        "type": "string",
+                        "description": "Team abbreviation this points to, or 'neither'.",
+                    },
+                    "weight": {
+                        "type": "string",
+                        "enum": ["decisive", "strong", "moderate", "slight", "none"],
+                        "description": "How much this moved the pick.",
+                    },
+                },
+                "required": ["factor", "reading", "favors", "weight"],
+                "additionalProperties": False,
+            },
+        },
     },
     "required": [
         "pick_type",
@@ -239,6 +279,7 @@ RESPONSE_SCHEMA = {
         "headline",
         "paragraph",
         "key_factors",
+        "decision_table",
     ],
     "additionalProperties": False,
 }
@@ -421,8 +462,9 @@ def store(conn, game_id: str, features_id: int | None, pack: dict, result: dict,
     cur = conn.execute(
         "INSERT INTO predictions (game_id, features_id, model, created_at, run_label, "
         "pick_type, pick_side, conviction, line_at_pick, price_at_pick, confidence, "
-        "projected_margin, projected_total, headline, paragraph, key_factors) "
-        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "projected_margin, projected_total, headline, paragraph, key_factors, "
+        "decision_table) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (
             game_id,
             features_id,
@@ -440,6 +482,7 @@ def store(conn, game_id: str, features_id: int | None, pack: dict, result: dict,
             result.get("headline"),
             result["paragraph"],
             json.dumps(result.get("key_factors", [])),
+            json.dumps(result.get("decision_table", [])),
         ),
     )
     new_id = cur.lastrowid

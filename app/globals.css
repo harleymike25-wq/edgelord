@@ -121,6 +121,61 @@ a.card:hover { border-color: #3d454e; background: var(--panel-2); }
   border: 1px solid var(--line); border-radius: 4px; padding: .12rem .4rem;
 }
 
+/* ---- primer + glossary ---- */
+/* Sits below the slate, so it reads as a footnote rather than a preamble. */
+.primer {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: .85rem 1rem;
+  margin: 2rem 0 1rem;
+}
+.primer p {
+  margin: 0 0 .6rem; font-size: .86rem; line-height: 1.65; color: var(--muted);
+  max-width: 68ch;
+}
+.primer strong { color: var(--text); }
+
+.glossary-link {
+  background: none; border: none; padding: 0; cursor: pointer;
+  color: var(--accent); font-size: .82rem; font-family: inherit;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.glossary-link:hover { color: #a5e4ff; }
+
+dialog.glossary {
+  background: var(--panel); color: var(--text);
+  border: 1px solid #3a424b; border-radius: 12px;
+  max-width: 620px; width: calc(100% - 2rem); max-height: 82vh;
+  padding: 0; overflow: hidden;
+}
+dialog.glossary::backdrop { background: rgba(0, 0, 0, .68); }
+
+.glossary-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1rem 1.2rem; border-bottom: 1px solid var(--line);
+  position: sticky; top: 0; background: var(--panel);
+}
+.glossary-head h2 { margin: 0; font-size: 1.05rem; }
+.glossary-close {
+  background: none; border: none; color: var(--muted);
+  font-size: 1.6rem; line-height: 1; cursor: pointer; padding: 0 .2rem;
+}
+.glossary-close:hover { color: var(--text); }
+
+.glossary-body { padding: .4rem 1.2rem 1.4rem; overflow-y: auto; max-height: 70vh; }
+.glossary-body section { padding: 1rem 0; border-bottom: 1px solid var(--line); }
+.glossary-body section:last-child { border-bottom: none; }
+.glossary-body h3 {
+  margin: 0 0 .5rem; font-size: .95rem; display: flex;
+  flex-direction: column; gap: .15rem;
+}
+.glossary-short {
+  font-weight: 400; font-size: .8rem; color: var(--dim); font-style: italic;
+}
+.glossary-body p {
+  margin: 0 0 .6rem; font-size: .87rem; line-height: 1.7; color: #c8ccd2;
+}
+.glossary-body p:last-child { margin-bottom: 0; }
+
 /* ---- matchup tables ---- */
 .mismatch {
   font-size: .88rem; color: var(--accent); margin: 0 0 1rem;
@@ -260,3 +315,39 @@ h3.section { font-size: .82rem; text-transform: uppercase; letter-spacing: .05em
   .card .top { flex-direction: column; gap: .5rem; }
   .conf { text-align: left; }
 }
+
+/* ---- decision table + factor panel ---- */
+/* The pick's audit trail. Deliberately dense: this is reference material you
+   scan against the write-up, not something to read end to end. */
+.factor-panel { margin-top: 1.6rem; }
+.factor-block { margin: 1.4rem 0; }
+.factor-block h4 {
+  margin: 0 0 .6rem; font-size: .82rem; font-weight: 600;
+  letter-spacing: .04em; text-transform: uppercase; color: var(--muted);
+}
+.factor-note {
+  margin: .5rem 0 0; font-size: .78rem; line-height: 1.6; color: var(--dim);
+  max-width: 70ch;
+}
+
+.factor-grid {
+  display: grid; grid-template-columns: max-content 1fr;
+  gap: .35rem 1rem; margin: 0; font-size: .86rem;
+}
+.factor-grid dt { color: var(--muted); }
+.factor-grid dd { margin: 0; }
+
+table.decision td.reading { color: var(--muted); font-size: .84rem; }
+table.decision td.weight { text-transform: uppercase; font-size: .72rem; letter-spacing: .05em; }
+.w-decisive { color: var(--accent); font-weight: 600; }
+.w-strong   { color: var(--text); font-weight: 600; }
+.w-moderate { color: var(--text); }
+.w-slight   { color: var(--muted); }
+.w-none     { color: var(--dim); }
+
+.turnover-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.4rem;
+}
+.turnover-team table.roster { margin-top: .5rem; }
+table.roster th[scope="row"] { font-weight: 500; }

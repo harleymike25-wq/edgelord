@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Masthead, SyntheticBanner } from "@/components/Chrome";
+import { DecisionTable, FactorPanel } from "@/components/Factors";
 import { ConvictionTag, PickBadge } from "@/components/GameCard";
 import { HeadToHeadTable, MatchupTables } from "@/components/MatchupTable";
 import {
@@ -123,6 +124,16 @@ export default async function GamePage({
 
             {game.unit_ratings && <MatchupTables ratings={game.unit_ratings} />}
             {game.head_to_head && <HeadToHeadTable h2h={game.head_to_head} />}
+            {p.decision_table && p.decision_table.length > 0 && (
+              <DecisionTable rows={p.decision_table} pickSide={p.pick_side} />
+            )}
+            {game.factors && (
+              <FactorPanel
+                factors={game.factors}
+                homeTeam={game.home_team}
+                awayTeam={game.away_team}
+              />
+            )}
 
             {p.key_factors.length > 0 && (
               <div className="factors">

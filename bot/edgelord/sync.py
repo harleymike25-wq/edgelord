@@ -70,6 +70,7 @@ def _game_documents(conn, season: int, week: int | None) -> list[dict]:
                p.pick_type, p.pick_side, p.conviction, p.line_at_pick,
                p.price_at_pick, p.confidence, p.projected_margin,
                p.projected_total, p.headline, p.paragraph, p.key_factors,
+               p.decision_table,
                f.data_gaps, f.payload,
                r.pick_result, r.profit_units, r.clv_points,
                r.closing_line, r.closing_total
@@ -116,10 +117,12 @@ def _game_documents(conn, season: int, week: int | None) -> list[dict]:
             "prediction": None,
             "result": None,
         }
-        # Lift the unit ratings out of the stored feature pack so the dashboard
-        # can show the matchup the pick was actually argued from. Only this
-        # slice is mirrored -- the full pack is tens of kilobytes of inputs
-        # nobody reads on a phone.
+        # Lift the inputs the pick was argued from out of the stored feature
+        # pack. The full pack is tens of kilobytes of raw inputs, so this is a
+        # slice -- but a wide enough one that the page can show every factor
+        # that moved the number rather than only the ones the write-up chose to
+        # name. Prose cites two departures rhetorically; the table shows all of
+        # them, for both teams, which is what you need to check the reasoning.
         if r.get("payload"):
             try:
                 pack = json.loads(r["payload"])
@@ -129,6 +132,25 @@ def _game_documents(conn, season: int, week: int | None) -> list[dict]:
                 h2h = (pack.get("matchup") or {}).get("head_to_head")
                 if h2h and h2h.get("meetings"):
                     doc["head_to_head"] = h2h
+
+                factors: dict = {}
+                wx = pack.get("weather")
+                if wx:
+                    factors["weather"] = wx
+                sit = pack.get("situation")
+                if sit:
+                    factors["situation"] = sit
+                for side in ("home", "away"):
+                    blk = pack.get(side) or {}
+                    picked = {
+                        k: blk[k]
+                        for k in ("roster_turnover", "prior_season_record")
+                        if blk.get(k)
+                    }
+                    if picked:
+                        factors[side] = picked
+                if factors:
+                    doc["factors"] = factors
             except (ValueError, TypeError):
                 pass
 
@@ -149,6 +171,7 @@ def _game_documents(conn, season: int, week: int | None) -> list[dict]:
                 "headline": r["headline"],
                 "paragraph": r["paragraph"],
                 "key_factors": json.loads(r["key_factors"] or "[]"),
+                "decision_table": json.loads(r["decision_table"] or "[]"),
                 "data_gaps": json.loads(r["data_gaps"] or "[]"),
             }
         if r["pick_result"] is not None:

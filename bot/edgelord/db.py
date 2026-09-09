@@ -135,6 +135,9 @@ CREATE TABLE IF NOT EXISTS predictions (
     headline         TEXT,       -- one line, no statistics, for scanning a slate
     paragraph        TEXT NOT NULL,
     key_factors      TEXT,       -- JSON array
+    -- JSON array of {factor, reading, favors, weight}: the model's own ledger
+    -- of what it weighed, including factors that argued against its pick.
+    decision_table   TEXT,
     superseded_by    INTEGER REFERENCES predictions(id)
 );
 CREATE INDEX IF NOT EXISTS idx_pred_game ON predictions(game_id, created_at);
@@ -179,6 +182,23 @@ def session() -> Iterator[sqlite3.Connection]:
         conn.close()
 
 
+# Columns added after a database already existed in the wild. SQLite has no
+# "ADD COLUMN IF NOT EXISTS", and CREATE TABLE IF NOT EXISTS leaves an existing
+# table untouched, so new columns have to be applied explicitly or every
+# pre-existing database silently lacks them.
+_ADDED_COLUMNS: tuple[tuple[str, str, str], ...] = (
+    ("predictions", "decision_table", "TEXT"),
+)
+
+
+def _add_missing_columns(conn) -> None:
+    for table, column, decl in _ADDED_COLUMNS:
+        have = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
+        if column not in have:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
+
+
 def init() -> None:
     with session() as conn:
         conn.executescript(SCHEMA)
+        _add_missing_columns(conn)
