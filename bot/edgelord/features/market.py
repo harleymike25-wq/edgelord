@@ -200,12 +200,30 @@ def _consensus_at(conn, game_id: str, at: str | None) -> float | None:
     return _consensus(rows, "spread_home")
 
 
+# The two numbers that carry real mass in the NFL margin distribution. A line
+# arriving at or leaving one of these changes a pick's premise even though it
+# passes through nothing, so the touch rule below is limited to them -- opening
+# it to all six would make almost every half-point move qualify and defeat the
+# point of the filter.
+MAJOR_KEY_NUMBERS = (3, 7)
+
+
 def crossed_key_number(before: float | None, after: float | None) -> bool:
-    """True when a key number sits strictly between two spreads."""
+    """True when a line move passes through a key number, or lands on / leaves a major one.
+
+    Strict crossing alone is not enough. A pick argued off the hook -- "we have
+    +3.5, past the most common margin in football" -- is void the moment the
+    number becomes 3, and 3.5 -> 3.0 crosses nothing: 3 is the endpoint, not an
+    interior point. That skipped exactly the move that invalidates the pick,
+    which is how a Wednesday night game went to kickoff on a two-week-old write-up
+    whose stated rationale no longer held.
+    """
     if before is None or after is None or before == after:
         return False
     lo, hi = sorted((abs(before), abs(after)))
-    return any(lo < k < hi for k in KEY_NUMBERS)
+    if any(lo < k < hi for k in KEY_NUMBERS):
+        return True
+    return any(lo <= k <= hi for k in MAJOR_KEY_NUMBERS)
 
 
 def games_needing_repredict(conn, season: int, week: int) -> list[str]:

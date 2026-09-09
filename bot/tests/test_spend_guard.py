@@ -90,9 +90,19 @@ class TestKeyNumberCrossing:
     def test_moving_without_crossing(self):
         assert market.crossed_key_number(3.5, 4.0) is False
 
-    def test_landing_exactly_on_a_key_number_is_not_a_crossing(self):
-        # Strictly between: 3.5 -> 3.0 touches 3 but does not pass through it.
-        assert market.crossed_key_number(3.5, 3.0) is False
+    def test_landing_on_a_major_key_number_qualifies(self):
+        # 3.5 -> 3.0 passes through nothing, but it takes the hook away from a
+        # pick argued on having it. Previously skipped; that is the bug this
+        # pins. Symmetric, because leaving 3 changes the premise just as much.
+        assert market.crossed_key_number(3.5, 3.0) is True
+        assert market.crossed_key_number(3.0, 3.5) is True
+        assert market.crossed_key_number(7.5, 7.0) is True
+
+    def test_touching_a_minor_key_number_is_not_enough(self):
+        # 4 is a key number but a thin one. Letting it trigger on touch would
+        # qualify almost every half-point move and defeat the filter.
+        assert market.crossed_key_number(3.5, 4.0) is False
+        assert market.crossed_key_number(6.0, 6.5) is False
 
     def test_no_movement(self):
         assert market.crossed_key_number(3.0, 3.0) is False
