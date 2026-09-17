@@ -387,6 +387,30 @@ class FeatureBuilder:
         return cur.lastrowid
 
 
+def split_played(conn, game_ids: list[str]) -> tuple[list[str], list[str]]:
+    """Split game ids into (unplayed, played), preserving order.
+
+    A live pick on a finished game supersedes the pick that was graded, and
+    grading only counts unsuperseded rows -- so the record would silently swap
+    a real outcome for a pick written after the score was known.
+    """
+    if not game_ids:
+        return [], []
+    marks = ",".join("?" * len(game_ids))
+    played = {
+        r["game_id"]
+        for r in conn.execute(
+            f"SELECT game_id FROM games WHERE home_score IS NOT NULL "
+            f"AND game_id IN ({marks})",
+            game_ids,
+        )
+    }
+    return (
+        [g for g in game_ids if g not in played],
+        [g for g in game_ids if g in played],
+    )
+
+
 def slate_game_ids(conn, season: int, week: int) -> list[str]:
     rows = conn.execute(
         "SELECT game_id FROM games WHERE season = ? AND week = ? ORDER BY gameday, gametime",

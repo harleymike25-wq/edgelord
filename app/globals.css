@@ -345,6 +345,48 @@ table.decision td.weight { text-transform: uppercase; font-size: .72rem; letter-
 .w-slight   { color: var(--muted); }
 .w-none     { color: var(--dim); }
 
+/* ---- post-mortem ---- */
+/* Tinted and rule-bordered so it reads as a correction to the write-up above
+   rather than a continuation of it. The `.variance` modifier drops the red down
+   to neutral grey: a loss that really was variance is not a failure, and
+   flagging it in red would provoke the overreaction this panel exists to stop. */
+.postmortem {
+  margin: 1.6rem 0 0; padding: .9rem 1.1rem;
+  background: #1b1618; border: 1px solid #3a2a2c;
+  border-left: 3px solid var(--loss); border-radius: var(--radius);
+}
+.postmortem.variance { background: var(--panel); border-color: var(--line);
+                       border-left-color: var(--push); }
+.postmortem h3.section { margin: 0 0 .5rem; color: var(--loss); }
+.postmortem.variance h3.section { color: var(--push); }
+
+.postmortem .verdict { margin: 0 0 .7rem; font-size: .97rem; font-weight: 600; }
+.postmortem .warn {
+  margin: 0 0 .7rem; padding: .55rem .7rem; font-size: .85rem; line-height: 1.6;
+  color: var(--warn); background: #241d0c; border: 1px solid #4a3a12;
+  border-radius: 6px; max-width: 68ch;
+}
+.postmortem .kv { row-gap: .35rem; }
+.postmortem .kv .w { color: var(--dim); font-size: .78rem; }
+.postmortem .kv .reading { color: var(--muted); font-size: .82rem; }
+
+.postmortem .explanation { margin-top: .9rem; }
+.postmortem .explanation p {
+  font-size: .92rem; line-height: 1.75; margin: 0 0 .7rem;
+  color: #d4d8dd; max-width: 68ch;
+}
+.postmortem .explanation p:last-child { margin-bottom: 0; }
+
+.postmortem .lesson {
+  margin: .9rem 0 0; padding-top: .7rem; border-top: 1px solid #3a2a2c;
+  font-size: .9rem; line-height: 1.7; max-width: 68ch;
+}
+.postmortem.variance .lesson { border-top-color: var(--line); }
+.postmortem .lesson .k {
+  display: block; font-size: .72rem; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--dim); margin-bottom: .15rem;
+}
+
 .turnover-grid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 1.4rem;

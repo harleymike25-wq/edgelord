@@ -176,3 +176,25 @@ class TestRepredictFilter:
             (g,),
         )
         assert market.games_needing_repredict(conn, 2026, 1) == [g]
+
+
+class TestPlayedGamesAreNotRepredicted:
+    def _game(self, conn, game_id, home_score=None):
+        conn.execute(
+            "INSERT INTO games (game_id, season, week, gameday, home_team, away_team, "
+            "home_score, away_score) VALUES (?,2026,1,'2026-09-13','BBB','AAA',?,?)",
+            (game_id, home_score, None if home_score is None else 10),
+        )
+
+    def test_finished_games_are_split_out_in_order(self, conn):
+        from edgelord.features.build import split_played
+
+        self._game(conn, "g1")
+        self._game(conn, "g2", home_score=13)
+        self._game(conn, "g3")
+        assert split_played(conn, ["g1", "g2", "g3"]) == (["g1", "g3"], ["g2"])
+
+    def test_empty_selection(self, conn):
+        from edgelord.features.build import split_played
+
+        assert split_played(conn, []) == ([], [])

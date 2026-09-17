@@ -73,13 +73,15 @@ def _game_documents(conn, season: int, week: int | None) -> list[dict]:
                p.decision_table,
                f.data_gaps, f.payload,
                r.pick_result, r.profit_units, r.clv_points,
-               r.closing_line, r.closing_total
+               r.closing_line, r.closing_total,
+               pm.verdict, pm.explanation, pm.lesson, pm.miss
         FROM games g
         LEFT JOIN predictions p
                ON p.game_id = g.game_id AND p.superseded_by IS NULL
               AND p.run_label != 'backtest'
         LEFT JOIN features f ON f.id = p.features_id
         LEFT JOIN results r ON r.prediction_id = p.id
+        LEFT JOIN post_mortems pm ON pm.prediction_id = p.id
         WHERE g.season = ?
     """
     params: list = [season]
@@ -144,8 +146,8 @@ def _game_documents(conn, season: int, week: int | None) -> list[dict]:
                     blk = pack.get(side) or {}
                     picked = {
                         k: blk[k]
-                        for k in ("roster_turnover", "prior_season_record")
-                        if blk.get(k)
+                        for k in ("roster_turnover", "prior_season_record", "injuries")
+                        if blk.get(k) is not None
                     }
                     if picked:
                         factors[side] = picked
@@ -182,6 +184,20 @@ def _game_documents(conn, season: int, week: int | None) -> list[dict]:
                 "closing_line": r["closing_line"],
                 "closing_total": r["closing_total"],
             }
+        # Losses travel with their explanation. A record that shows the misses
+        # but not why they happened is the same missing caveat problem as a win
+        # rate with no sample size beside it.
+        if r["miss"] is not None:
+            try:
+                miss = json.loads(r["miss"])
+            except (ValueError, TypeError):
+                miss = {}
+            doc["post_mortem"] = {
+                "verdict": r["verdict"],
+                "explanation": r["explanation"],
+                "lesson": r["lesson"],
+                "miss": miss,
+            }
         docs.append(doc)
     return docs
 
@@ -194,6 +210,7 @@ def _clv_series(conn, season: int) -> list[dict]:
         "JOIN predictions p ON p.id = r.prediction_id "
         "JOIN games g ON g.game_id = r.game_id "
         "WHERE g.season = ? AND p.superseded_by IS NULL AND p.pick_type != 'pass' "
+        "AND p.run_label != 'backtest' "
         "GROUP BY g.week ORDER BY g.week",
         (season,),
     ).fetchall()

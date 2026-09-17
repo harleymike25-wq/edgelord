@@ -155,6 +155,24 @@ CREATE TABLE IF NOT EXISTS results (
     graded_at      TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_results_game ON results(game_id);
+
+-- Why a losing pick lost. One row per losing prediction.
+--
+-- `miss` is derived entirely from data already stored, so it is cheap and
+-- regenerable. The narrative fields cost a model call, so they are kept rather
+-- than recomputed and are left NULL when the maths was generated on its own.
+CREATE TABLE IF NOT EXISTS post_mortems (
+    prediction_id  INTEGER PRIMARY KEY REFERENCES predictions(id),
+    game_id        TEXT NOT NULL,
+    created_at     TEXT NOT NULL,
+    model          TEXT,
+    miss           TEXT NOT NULL,  -- JSON, the computed miss
+    -- 'thesis_wrong' | 'thesis_right_variance' | 'bad_input' | 'data_gap'
+    verdict        TEXT,
+    explanation    TEXT,
+    lesson         TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_post_mortems_game ON post_mortems(game_id);
 """
 
 

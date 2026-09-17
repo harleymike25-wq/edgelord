@@ -115,6 +115,75 @@ export interface Game {
   head_to_head?: HeadToHead | null;
   /** Every input that moved the number, not just the ones the prose named. */
   factors?: Factors | null;
+  /** Present only on losses: what went wrong and whether it was reasoning or variance. */
+  post_mortem?: PostMortem | null;
+}
+
+export type MissVerdict =
+  | "thesis_wrong"
+  | "thesis_right_variance"
+  | "bad_input"
+  | "data_gap";
+
+/** How badly the pick lost against its number, not in units. */
+export type MissSeverity =
+  | "photo_finish"
+  | "near_miss"
+  | "clear"
+  | "decisive"
+  | "blowout";
+
+/**
+ * Arithmetic of a losing pick, computed from stored data rather than written by
+ * the model. Spread fields and total fields are mutually exclusive.
+ */
+export interface Miss {
+  pick_type: PickType;
+  pick_side: string;
+  line: number | null;
+  home_team: string;
+  away_team: string;
+  home_score: number;
+  away_score: number;
+  confidence: number | null;
+  conviction: Conviction | null;
+  clv_points: number | null;
+  profit_units: number | null;
+  /** True when the pick was laying points, false when receiving, null on totals. */
+  underdog: boolean | null;
+  /** How many points short of covering, positive on every loss. */
+  points_short: number | null;
+  severity: MissSeverity | null;
+  /** The edge the pick claimed: projection minus the number it had to beat. */
+  projected_edge?: number | null;
+  /** Signed projection error, projected minus actual. */
+  projection_error?: number | null;
+  actual_margin?: number | null;
+  projected_margin?: number | null;
+  actual_total?: number | null;
+  projected_total?: number | null;
+  /**
+   * The pick needed a result its own projection did not forecast, so it had no
+   * edge by its own arithmetic. Never a variance excuse.
+   */
+  contradicted_own_projection: boolean | null;
+  key_factors: string[];
+  factors: {
+    /** Rows that pointed at the side that lost, heaviest first. */
+    argued_for_pick: DecisionRow[];
+    /** Rows that pointed the other way and were outvoted, heaviest first. */
+    argued_against_pick: DecisionRow[];
+    carried_no_side: DecisionRow[];
+    heaviest_wrong: DecisionRow | null;
+    heaviest_right: DecisionRow | null;
+  };
+}
+
+export interface PostMortem {
+  verdict: MissVerdict | null;
+  explanation: string | null;
+  lesson: string | null;
+  miss: Miss;
 }
 
 export interface DecisionRow {
@@ -123,6 +192,17 @@ export interface DecisionRow {
   /** Team abbreviation this factor points to, or "neither". */
   favors: string;
   weight: "decisive" | "strong" | "moderate" | "slight" | "none";
+}
+
+export interface Injury {
+  player: string;
+  position: string | null;
+  /** Game designation, or the practice status when there is no designation. */
+  status: string | null;
+  injury: string | null;
+  practice: string | null;
+  snap_pct_prior: number | null;
+  starter: boolean;
 }
 
 export interface RosterMove {
@@ -200,10 +280,12 @@ export interface Factors {
   home?: {
     roster_turnover?: RosterTurnover | null;
     prior_season_record?: PriorSeasonRecord | null;
+    injuries?: Injury[] | null;
   } | null;
   away?: {
     roster_turnover?: RosterTurnover | null;
     prior_season_record?: PriorSeasonRecord | null;
+    injuries?: Injury[] | null;
   } | null;
 }
 

@@ -1,6 +1,7 @@
 import type {
   DecisionRow,
   Factors,
+  Injury,
   PriorSeasonRecord,
   RosterMove,
   RosterTurnover,
@@ -213,6 +214,59 @@ function MoveList({ moves, kind }: { moves: RosterMove[]; kind: "out" | "in" }) 
   );
 }
 
+/** The builder falls back to practice status when there is no game designation. */
+function designation(i: Injury): string {
+  return !i.status || i.status === i.practice ? "no designation" : i.status;
+}
+
+function InjuryList({ team, list }: { team: string; list: Injury[] }) {
+  return (
+    <div className="turnover-team">
+      <div className="pairing-head">
+        <span className="pairing-name">{team}</span>
+        <span className="pairing-verdict">
+          {list.filter((i) => i.starter && designation(i) === "Out").length} starters out
+        </span>
+      </div>
+      {list.length === 0 ? (
+        <p className="factor-note">No listed players.</p>
+      ) : (
+        <table className="matchup roster">
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th>Pos</th>
+              <th>Status</th>
+              <th>Injury</th>
+              <th>Prior snaps</th>
+            </tr>
+          </thead>
+          <tbody>
+            {list.map((i) => {
+              const d = designation(i);
+              const tone = d === "Out" || d === "Doubtful" ? "neg" : "";
+              return (
+                <tr key={`${i.player}-${i.position}`}>
+                  <th scope="row">
+                    {i.player}
+                    {i.starter ? " ★" : ""}
+                  </th>
+                  <td>{i.position ?? "—"}</td>
+                  <td className={tone} title={i.practice ?? undefined}>
+                    {d}
+                  </td>
+                  <td>{i.injury ?? "—"}</td>
+                  <td>{pct(i.snap_pct_prior, 0)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
 function TeamTurnover({ team, rt }: { team: string; rt: RosterTurnover }) {
   return (
     <div className="turnover-team">
@@ -315,6 +369,17 @@ export function FactorPanel({
       <h3 className="section">All factors</h3>
 
       <Conditions wx={factors.weather} sit={factors.situation} />
+
+      {(factors.away?.injuries || factors.home?.injuries) && (
+        <div className="factor-block">
+          <h4>Injury report</h4>
+          <div className="turnover-grid">
+            {factors.away?.injuries && <InjuryList team={awayTeam} list={factors.away.injuries} />}
+            {factors.home?.injuries && <InjuryList team={homeTeam} list={factors.home.injuries} />}
+          </div>
+          <p className="factor-note">★ starter by prior-season snap share. Hover a status for the practice report.</p>
+        </div>
+      )}
 
       <PriorSeason
         away={factors.away?.prior_season_record}

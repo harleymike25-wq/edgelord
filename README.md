@@ -12,9 +12,9 @@ directory setting. The Python bot lives in `bot/`.
 ```
 app/  components/  lib/  public/     Next.js dashboard (repo root)
 bot/
-  edgelord/        the bot: sources, features, predict, track, sync
+  edgelord/        the bot: sources, features, predict, track, postmortem, sync
   scripts/         scheduled-task runner and registration
-  tests/           grading, odds parsing, notation
+  tests/           grading, odds parsing, notation, post-mortem arithmetic
   data/            SQLite database and the parquet cache
 firestore.rules    denies all client access; the app reads server-side
 ```
@@ -66,6 +66,7 @@ $py = ".venv\Scripts\python.exe"
 & $py -m edgelord.cli predict --game <id> --dry-run            # prompt, no API call
 & $py -m edgelord.cli predict --week 1 --label sunday          # whole slate
 & $py -m edgelord.cli grade                         # grade finished games
+& $py -m edgelord.cli postmortem --week 1           # work out why the losses lost
 & $py -m edgelord.cli report --week 1 --open        # render the slate
 & $py -m edgelord.cli sync                          # mirror to Firestore + snapshot
 ```
@@ -173,6 +174,33 @@ Sunday runs at 10:00 so a sixteen-game slate is finished by 11:00. Logs land in
 Every gap is written into the pack's `data_gaps` array, and the system prompt
 instructs the model to reason around gaps rather than fill them in.
 
+## Post-mortems
+
+Every losing pick gets a row in `post_mortems`, in two layers.
+
+The **miss** is computed from what is already stored: how far the projection was
+off, how many points short of the number the pick finished, which rows of the
+model's own decision table argued for the side that lost, and whether the pick
+had any edge by its own arithmetic. It costs nothing, is unit-tested, and can be
+regenerated at any time. `--no-model` stops there.
+
+The **narrative** is a second model call that reads those figures and says
+whether the reasoning was wrong or the game simply went the other way. It is
+allowed — encouraged — to return `thesis_right_variance` and change nothing. A
+-1.00 unit loss is the same number for a half-point miss and a three-touchdown
+one, and only the second is evidence.
+
+One verdict is not available to it. When `contradicted_own_projection` is true
+the pick needed a result its own projection did not forecast, so it had no edge
+whatever the game then did; that cannot be excused as variance. The flag is
+computed rather than inferred from the signs, because that inference has already
+gone wrong once — see VERIFIED.md.
+
+**These do not feed back into the prediction prompt, by design.** A week of
+football is nine losses; injecting them would teach the model to overfit noise
+it cannot distinguish from signal. They are stored and displayed so a human can
+look for a pattern across a season.
+
 ## Sign conventions
 
 Getting these backwards silently corrupts everything downstream, so they are
@@ -193,8 +221,9 @@ fixed and tested:
 .venv\Scripts\python.exe -m pytest tests -q
 ```
 
-Covers the odds sign flip, spread/total grading, payout maths, CLV direction, and
-report notation — the places where a silent error would produce plausible but
+Covers the odds sign flip, spread/total grading, payout maths, CLV direction,
+report notation, post-mortem miss arithmetic, and the exclusion of backtests
+from the record — the places where a silent error would produce plausible but
 wrong numbers.
 
 ## A caveat worth stating plainly

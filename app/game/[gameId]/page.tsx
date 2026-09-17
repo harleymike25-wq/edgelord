@@ -5,6 +5,7 @@ import { Masthead, SyntheticBanner } from "@/components/Chrome";
 import { DecisionTable, FactorPanel } from "@/components/Factors";
 import { ConvictionTag, PickBadge } from "@/components/GameCard";
 import { HeadToHeadTable, MatchupTables } from "@/components/MatchupTable";
+import { PostMortemPanel } from "@/components/PostMortem";
 import {
   clv,
   finalScore,
@@ -65,6 +66,8 @@ export default async function GamePage({
                 <p key={i}>{para.trim()}</p>
               ))}
             </div>
+
+            {game.post_mortem && <PostMortemPanel pm={game.post_mortem} />}
 
             <dl className="kv">
               <dt>Confidence</dt>

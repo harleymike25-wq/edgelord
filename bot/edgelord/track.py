@@ -24,6 +24,25 @@ def payout(price: int | None) -> float:
     return price / 100.0 if price > 0 else 100.0 / abs(price)
 
 
+def effective_line(pick_type: str, pick_side: str, home: str, line_at_pick: float | None,
+                   spread_line: float | None, total_line: float | None) -> float | None:
+    """The number a pick is actually graded against.
+
+    `line_at_pick` is what was available when we picked; with no snapshot we
+    fall back to the nflverse closing number. Grading and the post-mortem have
+    to agree on this or they are describing two different bets.
+    """
+    if line_at_pick is not None:
+        return line_at_pick
+    if pick_type == "spread":
+        if spread_line is None:
+            return None
+        return spread_line if pick_side == home else -spread_line
+    if pick_type == "total":
+        return total_line
+    return None
+
+
 def _spread_grade(pick_side: str, home: str, line: float, home_score: int, away_score: int):
     margin = (home_score - away_score) if pick_side == home else (away_score - home_score)
     if margin > line:
@@ -83,11 +102,9 @@ def grade(conn, *, regrade: bool = False) -> int:
         pick_type, side, line = r["pick_type"], r["pick_side"], r["line_at_pick"]
         home, hs, as_ = r["home_team"], r["home_score"], r["away_score"]
 
-        # Fall back to the nflverse closing number when we have no snapshot.
-        if line is None and pick_type == "spread":
-            line = r["spread_line"] if side == home else -(r["spread_line"] or 0)
-        if line is None and pick_type == "total":
-            line = r["total_line"]
+        line = effective_line(
+            pick_type, side, home, line, r["spread_line"], r["total_line"]
+        )
 
         if pick_type == "pass" or line is None:
             outcome, profit = "push", 0.0
@@ -144,12 +161,17 @@ def _summarise(rows: list) -> dict:
 
 def record(conn, *, season: int | None = None) -> dict:
     """Running performance, overall and sliced by market and confidence."""
+    # Backtests are excluded for the same reason they never supersede a live
+    # pick: they are predictions made about games that had already finished, so
+    # counting them would let a favourable replay inflate a record that is
+    # supposed to describe money at risk. The pending count below already
+    # filtered them; this clause is what stops them reaching the record itself.
     sql = (
         "SELECT p.pick_type, p.pick_side, p.confidence, p.conviction, "
         "r.pick_result, r.profit_units, r.clv_points, g.season "
         "FROM results r JOIN predictions p ON p.id = r.prediction_id "
         "JOIN games g ON g.game_id = r.game_id "
-        "WHERE p.superseded_by IS NULL"
+        "WHERE p.superseded_by IS NULL AND p.run_label != 'backtest'"
     )
     params: tuple = ()
     if season is not None:

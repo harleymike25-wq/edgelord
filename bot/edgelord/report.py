@@ -6,7 +6,24 @@ import html
 import json
 from datetime import datetime
 
-from . import config, factor_tables, track
+from . import config, factor_tables, postmortem, track
+
+# Plain-language equivalents of the stored enums. The raw values are fine in a
+# database and unreadable on a page.
+VERDICT_LABELS = {
+    "thesis_wrong": "The reasoning was wrong",
+    "thesis_right_variance": "The reasoning held; the game went the other way",
+    "bad_input": "The reasoning followed a misleading input",
+    "data_gap": "Decided by something missing from the pack",
+}
+
+SEVERITY_LABELS = {
+    "photo_finish": "a point or less",
+    "near_miss": "inside a key number",
+    "clear": "a clear miss",
+    "decisive": "the wrong side",
+    "blowout": "not close",
+}
 
 CSS = """
 body { font: 15px/1.6 -apple-system, Segoe UI, sans-serif; max-width: 860px;
@@ -52,6 +69,21 @@ table { border-collapse: collapse; margin: .8rem 0; font-size: .9rem; }
 th, td { text-align: left; padding: .3rem .9rem .3rem 0; }
 th { color: #666; font-weight: 500; }
 .gaps { color: #999; font-size: .8rem; font-style: italic; }
+/* Loss post-mortem. Deliberately unlike the pick it sits under -- this is a
+   correction, not more of the argument, and it should not read as though the
+   write-up is still making its case. */
+.postmortem { border-left: 3px solid #c0392b; background: #fdf6f5;
+              padding: .7rem .9rem; margin: .9rem 0;
+              border-radius: 0 4px 4px 0; }
+.postmortem h4 { margin: 0 0 .45rem; font-size: .74rem; letter-spacing: .05em;
+              text-transform: uppercase; color: #c0392b; }
+.postmortem .verdict { font-weight: 600; margin-bottom: .45rem; }
+.postmortem dl { margin: 0 0 .55rem; font-size: .83rem; }
+.postmortem dt { color: #777; font-weight: 500; }
+.postmortem dd { margin: 0 0 .32rem; color: #333; }
+.postmortem p { margin: .45rem 0; font-size: .9rem; }
+.postmortem .lesson { font-weight: 600; font-size: .87rem; }
+.postmortem .warn { color: #c0392b; font-weight: 600; }
 """
 
 
@@ -159,8 +191,122 @@ def _describe_pick(r: dict) -> str:
     return f"{r['pick_side']} {(-line if line else 0.0):+g}"
 
 
+def _miss_lines(miss: dict) -> list[tuple[str, str]]:
+    """The computed miss as label/value pairs, in reading order."""
+    lines: list[tuple[str, str]] = []
+    side = miss.get("pick_side")
+
+    lines.append((
+        "Final",
+        f"{miss.get('home_team')} {miss.get('home_score')}, "
+        f"{miss.get('away_team')} {miss.get('away_score')}",
+    ))
+
+    error = miss.get("projection_error")
+    if miss.get("pick_type") == "spread" and miss.get("actual_margin") is not None:
+        proj, actual = miss.get("projected_margin"), miss["actual_margin"]
+        if proj is not None and error is not None:
+            lines.append((
+                "Projected vs actual",
+                f"{side} {proj:+g} projected, {actual:+g} actual "
+                f"(off by {abs(error):g})",
+            ))
+        else:
+            lines.append(("Actual margin", f"{side} {actual:+g}"))
+    elif miss.get("actual_total") is not None:
+        proj = miss.get("projected_total")
+        if proj is not None and error is not None:
+            lines.append((
+                "Projected vs actual",
+                f"{proj:g} projected, {miss['actual_total']:g} actual "
+                f"(off by {abs(error):g})",
+            ))
+        else:
+            lines.append(("Actual total", f"{miss['actual_total']:g}"))
+
+    short = miss.get("points_short")
+    if short is not None:
+        label = SEVERITY_LABELS.get(miss.get("severity") or "")
+        lines.append((
+            "Against the number",
+            f"lost by {short:g}" + (f" — {label}" if label else ""),
+        ))
+
+    edge = miss.get("projected_edge")
+    if edge is not None:
+        lines.append(("Edge it claimed", f"{edge:+g} pts"))
+
+    factors = miss.get("factors") or {}
+    wrong, right = factors.get("heaviest_wrong"), factors.get("heaviest_right")
+    if wrong:
+        lines.append((
+            "Heaviest factor that was wrong",
+            f"{wrong['factor']} ({wrong['weight']}) — {wrong['reading']}",
+        ))
+    if right:
+        lines.append((
+            "Heaviest factor it outvoted",
+            f"{right['factor']} ({right['weight']}) — {right['reading']}",
+        ))
+    return lines
+
+
+def _post_mortem_md(pm: dict) -> list[str]:
+    miss = pm.get("miss") or {}
+    out = ["", "### Why this lost", ""]
+
+    verdict = VERDICT_LABELS.get(pm.get("verdict") or "") or pm.get("verdict")
+    if verdict:
+        out += [f"**{verdict}**", ""]
+    if miss.get("contradicted_own_projection"):
+        out += [
+            "> **No edge by its own arithmetic.** The pick needed a result its "
+            "own projection did not forecast.",
+            "",
+        ]
+    for label, value in _miss_lines(miss):
+        out.append(f"- **{label}:** {value}")
+    if pm.get("explanation"):
+        out += ["", pm["explanation"]]
+    if pm.get("lesson"):
+        out += ["", f"**Lesson:** {pm['lesson']}"]
+    return out
+
+
+def _post_mortem_html(pm: dict) -> str:
+    miss = pm.get("miss") or {}
+    parts = ["<div class='postmortem'><h4>Why this lost</h4>"]
+
+    verdict = VERDICT_LABELS.get(pm.get("verdict") or "") or pm.get("verdict")
+    if verdict:
+        parts.append(f"<div class='verdict'>{html.escape(str(verdict))}</div>")
+    if miss.get("contradicted_own_projection"):
+        parts.append(
+            "<p class='warn'>No edge by its own arithmetic — the pick needed a "
+            "result its own projection did not forecast.</p>"
+        )
+
+    parts.append("<dl>")
+    for label, value in _miss_lines(miss):
+        parts.append(
+            f"<dt>{html.escape(label)}</dt><dd>{html.escape(str(value))}</dd>"
+        )
+    parts.append("</dl>")
+
+    for para in (pm.get("explanation") or "").split("\n\n"):
+        if para.strip():
+            parts.append(f"<p>{html.escape(para.strip())}</p>")
+    if pm.get("lesson"):
+        parts.append(
+            f"<p class='lesson'>Lesson: {html.escape(pm['lesson'])}</p>"
+        )
+    parts.append("</div>")
+    return "".join(parts)
+
+
 def render_markdown(conn, season: int, week: int) -> str:
     rows = _slate_rows(conn, season, week)
+    mortems = postmortem.load(conn, season, week=week)
     out = [
         f"# Edgelord — {season} Week {week}",
         f"_Generated {datetime.now():%Y-%m-%d %H:%M}_",
@@ -199,6 +345,8 @@ def render_markdown(conn, season: int, week: int) -> str:
         if factors:
             out.append("")
             out.append("_Key factors: " + "; ".join(factors) + "_")
+        if r["id"] in mortems:
+            out += _post_mortem_md(mortems[r["id"]])
         out += _tables_md(_pack_tables(r))
         gaps = json.loads(r["data_gaps"] or "[]")
         if gaps:
@@ -223,6 +371,7 @@ def render_markdown(conn, season: int, week: int) -> str:
 
 def render_html(conn, season: int, week: int) -> str:
     rows = _slate_rows(conn, season, week)
+    mortems = postmortem.load(conn, season, week=week)
     parts = [
         "<!doctype html><meta charset='utf-8'>",
         f"<title>Edgelord {season} W{week}</title><style>{CSS}</style>",
@@ -265,6 +414,8 @@ def render_html(conn, season: int, week: int) -> str:
         factors = json.loads(r["key_factors"] or "[]")
         if factors:
             parts.append(f"<div class='factors'>{' · '.join(factors)}</div>")
+        if r["id"] in mortems:
+            parts.append(_post_mortem_html(mortems[r["id"]]))
         tables = _pack_tables(r)
         if tables:
             parts.append(_tables_html(tables))

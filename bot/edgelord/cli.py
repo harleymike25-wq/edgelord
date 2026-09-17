@@ -178,7 +178,7 @@ def cmd_predict(args) -> int:
     import json
 
     from . import predict as predictor
-    from .features.build import FeatureBuilder, slate_game_ids
+    from .features.build import FeatureBuilder, slate_game_ids, split_played
 
     db.init()
     with db.session() as conn:
@@ -205,6 +205,16 @@ def cmd_predict(args) -> int:
             if not game_ids:
                 print(f"no games for {season} week {args.week}", file=sys.stderr)
                 return 1
+
+        # Backtests predict finished games on purpose and never supersede a
+        # live pick. Everything else must not touch a game with a result.
+        if args.label != "backtest":
+            game_ids, played = split_played(conn, game_ids)
+            for g in played:
+                print(f"skip {g}: already played; a new pick would replace its graded result")
+            if not game_ids:
+                print("nothing to do: every selected game has already been played")
+                return 0
 
         builder = FeatureBuilder(sorted({season - 1, season}))
         spent = 0.0
@@ -335,6 +345,55 @@ def cmd_grade(args) -> int:
     return 0
 
 
+def cmd_postmortem(args) -> int:
+    from . import postmortem
+
+    db.init()
+    season = args.season or config.current_season()
+    with db.session() as conn:
+        def report_one(row, miss, narrative):
+            dog = "dog" if miss.get("underdog") else "fav"
+            print(
+                f"\nW{row['week']} {row['away_team']} at {row['home_team']} "
+                f"({row['home_team']} {row['home_score']}-{row['away_score']})"
+            )
+            print(
+                f"  pick {miss['pick_side']} {miss['line']:+g} ({dog}) "
+                f"conf {miss.get('confidence')} {miss.get('conviction')}"
+            )
+            if miss.get("points_short") is not None:
+                print(
+                    f"  lost by {miss['points_short']:g} against the number "
+                    f"[{miss['severity']}], projection off by "
+                    f"{miss.get('projection_error')}"
+                )
+            if miss.get("projected_edge") is not None:
+                print(f"  edge it thought it had: {miss['projected_edge']:+g}")
+            heaviest = miss["factors"].get("heaviest_wrong")
+            if heaviest:
+                print(f"  heaviest wrong factor: {heaviest['factor']} ({heaviest['weight']})")
+            if narrative:
+                print(f"  VERDICT {narrative['verdict']}")
+                print(f"  LESSON  {narrative['lesson']}")
+
+        out = postmortem.generate(
+            conn,
+            season=season,
+            week=args.week,
+            regenerate=args.regenerate,
+            with_model=not args.no_model,
+            limit=args.limit,
+            on_event=report_one,
+        )
+
+    print()
+    for k in ("losses", "computed", "explained", "failed", "cost_usd"):
+        print(f"{k:<10} {out[k]}")
+    for err in out["errors"]:
+        print(f"error: {err}", file=sys.stderr)
+    return 0
+
+
 def cmd_report(args) -> int:
     from . import report
 
@@ -437,6 +496,23 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--season", type=int)
     s.add_argument("--regrade", action="store_true", help="recompute already-graded rows")
     s.set_defaults(func=cmd_grade)
+
+    s = sub.add_parser(
+        "postmortem",
+        help="explain why each losing pick lost, so the misses are on record",
+    )
+    s.add_argument("--season", type=int)
+    s.add_argument("--week", type=int)
+    s.add_argument(
+        "--regenerate", action="store_true",
+        help="redo losses that already have a post-mortem",
+    )
+    s.add_argument(
+        "--no-model", action="store_true",
+        help="compute the miss arithmetic only, with no model call and no cost",
+    )
+    s.add_argument("--limit", type=int, help="stop after this many losses")
+    s.set_defaults(func=cmd_postmortem)
 
     s = sub.add_parser("report", help="render the slate report")
     s.add_argument("--week", type=int, required=True)

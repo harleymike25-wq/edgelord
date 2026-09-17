@@ -308,6 +308,45 @@ def _unit_pairings(pack: dict) -> list[Table]:
     return out
 
 
+def _designation(inj: dict) -> str:
+    # The builder falls back to the practice status when a player carries no
+    # game designation, so a status equal to the practice value means "none".
+    status = inj.get("status")
+    if not status or status == inj.get("practice"):
+        return "no designation"
+    return str(status)
+
+
+def _injuries(pack: dict, side: str, team: str) -> Table | None:
+    inj = (pack.get(side) or {}).get("injuries")
+    if inj is None:
+        return None
+    if not inj:
+        return {
+            "title": f"{team} injury report",
+            "kind": "kv",
+            "rows": [("Report", "no listed players")],
+        }
+    rows = [
+        [
+            i.get("player") or "—",
+            i.get("position") or "—",
+            _designation(i),
+            i.get("injury") or "—",
+            i.get("practice") or "—",
+            _pct(i.get("snap_pct_prior"), 0),
+            "yes" if i.get("starter") else "",
+        ]
+        for i in inj
+    ]
+    return {
+        "title": f"{team} injury report",
+        "kind": "grid",
+        "headers": ["Player", "Pos", "Game status", "Injury", "Practice", "Prior snaps", "Starter"],
+        "rows": rows,
+    }
+
+
 def _turnover(pack: dict, side: str, team: str) -> Table | None:
     rt = (pack.get(side) or {}).get("roster_turnover")
     if not rt:
@@ -354,6 +393,8 @@ def build(pack: dict, away: str, home: str) -> list[Table]:
     tables: list[Table | None] = [
         _conditions(pack),
         _market(pack),
+        _injuries(pack, "away", away),
+        _injuries(pack, "home", home),
         _prior_season(pack, away, home),
         _efficiency(pack, away, home, "offense"),
         _efficiency(pack, away, home, "defense"),

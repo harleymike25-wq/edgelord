@@ -14,6 +14,15 @@ CACHE_DIR = DATA_DIR / "cache"
 REPORT_DIR = ROOT / "reports"
 DB_PATH = DATA_DIR / "edgelord.db"
 
+# An empty environment variable is not configuration. dotenv deliberately will
+# not override a variable that already exists, so a blank ANTHROPIC_API_KEY
+# exported by the surrounding shell shadows a perfectly good value in .env and
+# the key reports as missing. Drop blanks first so the file can fill them, while
+# a genuinely set variable still wins.
+for _blankable in ("ANTHROPIC_API_KEY", "ODDS_API_KEY", "FIREBASE_CREDENTIALS"):
+    if _blankable in os.environ and not os.environ[_blankable].strip():
+        del os.environ[_blankable]
+
 load_dotenv(ROOT / ".env")
 
 MODEL = os.getenv("EDGELORD_MODEL", "claude-opus-4-8")

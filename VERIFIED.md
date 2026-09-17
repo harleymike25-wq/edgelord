@@ -7,7 +7,7 @@ and only one of those is worth anything at 11am on a Sunday.
 
 Keep it honest. Move a row up only after the thing has actually executed.
 
-Last updated: 2026-08-17
+Last updated: 2026-09-17
 
 ---
 
@@ -20,7 +20,7 @@ Last updated: 2026-08-17
 | Regression indicators | League-wide wins summed to 271 across 272 games + 1 tie |
 | Feature pack build | 11.7 KB pack for a real game, all blocks populated, 2 expected data gaps |
 | Result-leak fix | `final_score` and `home_score` confirmed absent from the default pack |
-| Grading maths | 83 unit tests: spread/total/push/CLV in both directions |
+| Grading maths | Unit tests: spread/total/push/CLV in both directions |
 | Spend guard logic | Unit-tested: ceiling blocks, month rollover, unknown model bills at Opus not free |
 | Key-number re-predict filter | Unit-tested against a synthetic snapshot series |
 | Preseason isolation | Unit-tested: orphan snapshots cannot reach the record |
@@ -29,13 +29,19 @@ Last updated: 2026-08-17
 | Firestore sync (local path) | Writes `public/data/season-2025.json`, correct shape |
 | **Fable 5 request path** | 2026-08-17: live calls on `claude-fable-5` via `beta.messages.create` with `fallbacks`. Well-formed structured responses; returned both a `pass` and a `spread` pick. |
 | **Spend recording** | 2 calls: 15,943 in / 2,013 out / $0.26 written to `api_usage`; `edgelord spend` reports 1% of ceiling. |
-| **Backtest isolation** | 3 backtest predictions stored, live record-affecting predictions still 0. |
+| **Backtest isolation** | 2026-09-17: was overstated — see "Backtests were reaching the record" below. Now genuinely verified: `record` and `_clv_series` both exclude `run_label = 'backtest'`, pinned by regression tests. All-seasons record reads 6-9-1, the same as 2026 alone. |
 | **Dedicated API key + workspace** | 2026-08-17: key distinct from the sibling project's (SHA differs), scoped to `wrkspc_01JXFyJAfmMGrAQPPpd7zM1u` rather than Default, so a console spend cap is available. |
 | **2026 schedule loaded** | 272 games, Week 1 spreads present, 112 games with a line. |
 | **Free line snapshots** | 2026-08-18: `snapshot-lines` wrote 112 rows, then correctly wrote 0 on re-run (dedup). `poll-odds` falls back to it cleanly with no key. Market block reports `available: True` with opener, current and key-number context. |
 | **Firestore push and read-back** | 2026-08-18: project `edgelord-4c9ec`, 285 game docs + meta written, read back by document id with correct scores. Dashboard reports source `firestore`, zero console errors. |
 | **Pick quality spot-check** | NYJ +14 vs BAL: projected a 10-point Baltimore win, actual was 13 (BAL 23-10), so the pick covered by half a point. Reasoning cited the 5-5 record and +1 point differential behind a two-touchdown price. |
 | **`.env` BOM handling** | PowerShell `-Encoding utf8` writes a BOM; dotenv then reads the first key as `﻿NAME`. Fixed by writing without BOM. Bit only when the key was line 1. |
+| **Refresh → grade on real results** | 2026-09-17: `refresh` took 2026 from 2 scored games to 16, then `grade` wrote 79 results. First time the chain has run on games that actually finished rather than on fixtures. |
+| **A real running record** | 2026-09-17: **6-9-1, -3.55 units, ROI -0.236, avg CLV +0.09** over Week 1. Best bets 1-1. Before the refresh the dashboard read 0-1-1 off a single graded game, which looked like no data rather than a losing week. |
+| **Post-mortem arithmetic** | 30 unit tests: both spread directions, over and under, severity bands at every boundary, the decision-table split, and `contradicted_own_projection` including the zero-edge case. Full suite 200 passing. |
+| **Post-mortem model pass** | 2026-09-17: 10 live `postmortem` calls on Fable 5, $0.60 total, all 9 losses carry a narrative. 2 calls failed transiently and succeeded on re-run; the arithmetic had already stored, so nothing was lost. |
+| **Post-mortem verdict calibration** | 8 `thesis_wrong`, 1 `thesis_right_variance`. The variance verdict went to the 2.5-point near-miss; the blowouts all read as reasoning failures. Spot-checked against the misses rather than taken on trust. |
+| **Post-mortem on the dashboard** | 2026-09-17: panel renders on `/game/2026_01_DAL_NYG` with the no-edge warning, and on `/game/2026_01_TB_CIN` in the neutral grey variance treatment. `tsc --noEmit` clean, 0 console errors. |
 
 ## Ran exactly once, on a model we are no longer using
 
@@ -73,6 +79,28 @@ These are where a Sunday morning failure will come from.
 | **Line movement across a real week** | 112 snapshots stored, but all from one moment. The movement path is unit-tested; it has not yet watched a number actually move. | wait for nflverse to update a 2026 line, then `snapshot-lines` again |
 
 ## Bugs found and fixed
+
+**Backtests were reaching the record (2026-09-17).**
+The isolation that was verified in August was the *superseding* rule: a backtest
+never replaces a live prediction. But `grade` scores backtests deliberately —
+that is how a replay gets evaluated — and `track.record` filtered only on
+`superseded_by IS NULL`, so every graded replay was counted as money at risk.
+`sync._clv_series` had the same gap, which meant the trend chart was drawn from
+the same contaminated set. The all-seasons record read 3-2-1 off four backtest
+predictions of games that had already finished; it now reads 6-9-1, matching
+2026 alone, and 2025 correctly reads 0-0. No error was ever raised — a backtest
+that happened to pick well would simply have inflated the published record.
+Both queries now exclude `run_label = 'backtest'`, pinned by regression tests in
+`tests/test_postmortem.py`.
+
+**A blank environment variable shadowed a valid key (2026-09-17).**
+`ANTHROPIC_API_KEY` was present and correct in `bot/.env`, and the bot still
+reported it missing. The surrounding shell exported it as an empty string, and
+`load_dotenv` will not override a variable that already exists — so the blank
+ambient value won and the file was never consulted. Same family as the BOM bug
+below: the key was right there and the loader could not see it. `config.py` now
+drops blank values for the three secret variables before loading `.env`, so the
+file can fill them while a genuinely set variable still takes precedence.
 
 **Roster continuity join was wrong three separate ways (2026-08-23).**
 All three produced plausible-looking numbers rather than errors, which is the
@@ -138,3 +166,37 @@ Kept as a calibration record, not as self-flagellation.
 - Asserted an output/input cost ratio of >4x in a test; the real figure is 3.4x.
 - Copied an API key from a sibling project, then raised the "you may want
   separate keys" caveat afterwards rather than before.
+- Reviewed the DAL/NYG loss, read a stored line of `3.0` as "getting the field
+  goal", and returned `thesis_right_variance` for a pick whose own projected
+  edge was **-3.5**. It repeated the write-up's sign error instead of catching
+  it, which is the one job a post-mortem has. Fixed by computing
+  `contradicted_own_projection` rather than leaving the signs to be read, and by
+  making that verdict unavailable when the flag is true — the check now does not
+  depend on the reviewer getting the arithmetic right.
+
+## What the losses actually showed (2026-09-17, Week 1)
+
+Recorded here because it is the substance of the post-mortems, and a pattern
+across nine losses is worth more than any single one of them.
+
+Eight of the nine were the same shape: take the underdog and the points, argued
+from prior-season efficiency and regression indicators, with a thin claimed edge
+of +1.5 to +5.0. The projections were then off by 12 to 25 points. That is not
+nine independent misses — it is one thesis applied nine times, and the sample is
+far too small to tell a broken thesis from a bad week.
+
+Two specific failures are not variance and do not need a larger sample:
+
+- **DAL/NYG** — the write-up argued for a side "plus the field goal" that was
+  laying three. The pick had a -3.5 edge by its own projection and could not
+  have been correct even had it cashed.
+- **Week 1 priors** — every loss leaned on 2025 efficiency for games played
+  with substantially changed rosters, while the market had already priced the
+  change. Several decision tables say so explicitly in the row that got
+  outvoted.
+
+Per the brief, none of this is fed back into the prediction prompt. Nine losses
+teach noise far more readily than signal, and the system prompt already warns
+that a single game carries roughly 13 points of standard error. The post-mortems
+are stored and displayed so a human can see the pattern; they do not steer the
+next pick.
