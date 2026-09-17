@@ -42,6 +42,8 @@ Last updated: 2026-09-17
 | **Post-mortem model pass** | 2026-09-17: 10 live `postmortem` calls on Fable 5, $0.60 total, all 9 losses carry a narrative. 2 calls failed transiently and succeeded on re-run; the arithmetic had already stored, so nothing was lost. |
 | **Post-mortem verdict calibration** | 8 `thesis_wrong`, 1 `thesis_right_variance`. The variance verdict went to the 2.5-point near-miss; the blowouts all read as reasoning failures. Spot-checked against the misses rather than taken on trust. |
 | **Post-mortem on the dashboard** | 2026-09-17: panel renders on `/game/2026_01_DAL_NYG` with the no-edge warning, and on `/game/2026_01_TB_CIN` in the neutral grey variance treatment. `tsc --noEmit` clean, 0 console errors. |
+| **Landing on the live week** | 2026-09-17: `/` resolves Week 2 by date and redirects there on both the Firestore and snapshot backends; nav reads `Wk 2` (current) then `Wk 1`. `_live_week` unit-tested at the two-day boundary, on a same-day kickoff tie, at season end and across seasons — it has to agree with `run_task.ps1` or the two disagree about which week is live on a Monday. |
+| **An unpicked week reads as unpicked** | 2026-09-17: Week 3 renders 16 cards saying "Not picked yet" on a dashed badge, under "Week 3 — 0 plays, 0 passes, 16 games". Every one previously said "No play", which is the model's word for a deliberate pass, so an unrun job looked like sixteen decisions. Full suite 206 passing. |
 
 ## Ran exactly once, on a model we are no longer using
 
@@ -92,6 +94,18 @@ predictions of games that had already finished; it now reads 6-9-1, matching
 that happened to pick well would simply have inflated the published record.
 Both queries now exclude `run_label = 'backtest'`, pinned by regression tests in
 `tests/test_postmortem.py`.
+
+**The live week would have 404'd the deployed dashboard (2026-09-17).**
+The Firestore mirror skips games with neither a prediction nor a result, so the
+schedule beyond the last predicted week is simply absent — 32 documents out of a
+272-game season. That was fine while the homepage redirected to the newest
+*predicted* week, and broke the moment it started landing on the live week by
+date: every Tuesday, once Week N finished and before the Sunday job predicted
+Week N+1, `/` would have redirected to a week Firestore had never heard of and
+the site would have 404'd. Locally it was invisible, because the JSON snapshot
+carries all 272 games and is what development reads. `sync` now mirrors the live
+week even when nothing has been picked in it — the one exception to the filter,
+at a cost of at most 16 documents.
 
 **A blank environment variable shadowed a valid key (2026-09-17).**
 `ANTHROPIC_API_KEY` was present and correct in `bot/.env`, and the bot still

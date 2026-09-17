@@ -174,6 +174,34 @@ export function predictedWeeks(games: Game[]): number[] {
   return [...weeks].sort((a, b) => b - a);
 }
 
+/**
+ * The live week, resolved from the schedule rather than the calendar: bye
+ * structure and flexed games make date arithmetic unreliable.
+ *
+ * The two-day grace period matches `run_task.ps1`, and is what keeps Monday and
+ * Tuesday on the week that just finished rather than jumping ahead to a slate
+ * nobody has picked yet. Returns null once the season has no games left.
+ */
+export function currentWeek(games: Game[]): number | null {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 2);
+  const since = cutoff.toISOString().slice(0, 10);
+
+  let earliest: Game | null = null;
+  for (const g of games) {
+    if (g.gameday < since) continue;
+    if (
+      earliest === null ||
+      g.gameday < earliest.gameday ||
+      (g.gameday === earliest.gameday &&
+        (g.gametime_et ?? "").localeCompare(earliest.gametime_et ?? "") < 0)
+    ) {
+      earliest = g;
+    }
+  }
+  return earliest?.week ?? null;
+}
+
 export function gamesForWeek(games: Game[], week: number): Game[] {
   return games.filter((g) => g.week === week);
 }

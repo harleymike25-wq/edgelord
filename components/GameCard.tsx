@@ -15,11 +15,13 @@ export function PickBadge({ game }: { game: Game }) {
   // Once graded, the badge carries the outcome rather than the conviction.
   const tone = game.result
     ? game.result.pick_result
-    : p?.conviction === "best_bet"
-      ? "best"
-      : p?.conviction === "pass" || p?.pick_type === "pass"
-        ? "pass"
-        : "lean";
+    : !p
+      ? "none"
+      : p.conviction === "best_bet"
+        ? "best"
+        : p.conviction === "pass" || p.pick_type === "pass"
+          ? "pass"
+          : "lean";
   return <span className={`pick ${tone}`}>{label}</span>;
 }
 

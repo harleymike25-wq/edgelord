@@ -9,7 +9,10 @@ import type { Game, Prediction } from "./types";
  * dashboard and the generated report will contradict each other.
  */
 export function describePick(game: Game, p: Prediction | null): string {
-  if (!p || p.pick_type === "pass") return "No play";
+  // "No play" is a decision the model made. A game it has not been asked about
+  // yet has to say so instead, or an unpicked slate reads as sixteen passes.
+  if (!p) return "Not picked yet";
+  if (p.pick_type === "pass") return "No play";
 
   if (p.pick_type === "total") {
     const line = p.line_at_pick ?? game.closing_total;

@@ -256,6 +256,21 @@ def write_snapshot(payload: dict, *, name: str | None = None) -> Path:
     return path
 
 
+def _live_week(conn, season: int) -> int | None:
+    """The week the dashboard opens on, by the same rule as `run_task.ps1`.
+
+    Mirrored even when it holds no picks, because the dashboard lands there by
+    default: an unmirrored week 404s, which reads as the season being over
+    rather than as a slate nobody has predicted yet.
+    """
+    row = conn.execute(
+        'SELECT week FROM games WHERE season = ? AND gameday >= date("now", "-2 day") '
+        "ORDER BY gameday, gametime LIMIT 1",
+        (season,),
+    ).fetchone()
+    return row["week"] if row else None
+
+
 def push(conn, season: int, *, week: int | None = None, snapshot: bool = True) -> dict:
     """Mirror to Firestore and optionally write the local snapshot."""
     payload = build_payload(conn, season, week=week)
@@ -277,12 +292,18 @@ def push(conn, season: int, *, week: int | None = None, snapshot: bool = True) -
         )
         return out
 
+    live = _live_week(conn, season)
     batch = client.batch()
     written = 0
     for doc in payload["games"]:
         # Only mirror games we have something to say about; the full schedule
-        # would be thousands of pointless documents.
-        if doc["prediction"] is None and doc["final"] is None:
+        # would be thousands of pointless documents. The live week is the
+        # exception -- see `_live_week`.
+        if (
+            doc["prediction"] is None
+            and doc["final"] is None
+            and doc["week"] != live
+        ):
             continue
         batch.set(client.collection(COLLECTION).document(doc["game_id"]), doc)
         written += 1

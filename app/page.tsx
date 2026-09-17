@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { Masthead, SyntheticBanner } from "@/components/Chrome";
-import { lastLoadError, loadSeason, predictedWeeks } from "@/lib/data";
+import { currentWeek, lastLoadError, loadSeason, predictedWeeks } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
@@ -9,8 +9,11 @@ export default async function Home() {
   const payload = await loadSeason();
   if (!payload) return <NoData />;
 
-  const weeks = predictedWeeks(payload.games);
-  if (weeks.length) redirect(`/week/${weeks[0]}`);
+  // The live week even when it has no picks yet, so an unpicked slate reads as
+  // a job that has not run rather than as the season being over. Falls back to
+  // the newest predicted week once the schedule is exhausted.
+  const week = currentWeek(payload.games) ?? predictedWeeks(payload.games)[0];
+  if (week) redirect(`/week/${week}`);
 
   return (
     <>
