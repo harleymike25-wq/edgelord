@@ -16,6 +16,7 @@
   .\run.ps1 thursday          # standalone game: only re-predicts numbers that moved
   .\run.ps1 monday
   .\run.ps1 grade             # score finished games, no model calls
+  .\run.ps1 publish           # push what is already predicted to the dashboard
   .\run.ps1 lines             # snapshot the current line, no model calls
   .\run.ps1 status            # what is in the database, no model calls
 
@@ -24,7 +25,7 @@
 #>
 param(
     [Parameter(Mandatory = $true, Position = 0)]
-    [ValidateSet('sunday', 'wednesday', 'thursday', 'monday', 'grade', 'lines', 'status', 'spend')]
+    [ValidateSet('sunday', 'wednesday', 'thursday', 'monday', 'grade', 'publish', 'lines', 'status', 'spend')]
     [string]$Job,
 
     [int]$Week,
@@ -54,19 +55,21 @@ function Invoke-Cli {
 
 # Jobs that only read, and the description shown before running.
 $readOnly = @{
-    'grade'  = 'Refresh final scores and grade any finished games. No model calls.'
-    'lines'  = 'Snapshot the current nflverse line. No model calls.'
-    'status' = 'Show what is in the database. No model calls.'
-    'spend'  = 'Show model spend by month. No model calls.'
+    'grade'   = 'Refresh final scores and grade any finished games. No model calls.'
+    'publish' = 'Mirror the database to Firestore so the dashboard matches it. No model calls.'
+    'lines'   = 'Snapshot the current nflverse line. No model calls.'
+    'status'  = 'Show what is in the database. No model calls.'
+    'spend'   = 'Show model spend by month. No model calls.'
 }
 
 if ($readOnly.ContainsKey($Job)) {
     Write-Host $readOnly[$Job] -ForegroundColor Cyan
     switch ($Job) {
-        'grade'  { & powershell -NoProfile -ExecutionPolicy Bypass -File $runner -Job grade }
-        'lines'  { Invoke-Cli @('poll-odds') }
-        'status' { Invoke-Cli @('status') }
-        'spend'  { Invoke-Cli @('spend') }
+        'grade'   { & powershell -NoProfile -ExecutionPolicy Bypass -File $runner -Job grade }
+        'publish' { & powershell -NoProfile -ExecutionPolicy Bypass -File $runner -Job publish }
+        'lines'   { Invoke-Cli @('poll-odds') }
+        'status'  { Invoke-Cli @('status') }
+        'spend'   { Invoke-Cli @('spend') }
     }
     exit $LASTEXITCODE
 }

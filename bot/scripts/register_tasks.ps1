@@ -3,12 +3,13 @@
   Register (or re-register) the Edgelord scheduled tasks for the current user.
 
 .DESCRIPTION
-  Registers four tasks under the \Edgelord\ folder. No elevation is required --
+  Registers five tasks under the \Edgelord\ folder. No elevation is required --
   these run as the current user, only when logged on.
 
     Edgelord\PollOdds   every 6 hours          snapshot lines (builds open->close)
+    Edgelord\Publish    hourly                 mirror to Firestore; no model calls
     Edgelord\Sunday     Sundays 10:00          full slate: poll, grade, predict, report
-    Edgelord\Midweek    Thu + Mon 18:00        re-poll and re-predict
+    Edgelord\Midweek    Wed + Thu + Mon 11:00  re-poll and re-predict
     Edgelord\Grade      Tuesdays 09:00         grade the completed week
 
   The Sunday job runs at 10:00 rather than 11:00 so a sixteen-game slate has
@@ -27,6 +28,7 @@ $folder = '\Edgelord\'
 
 $tasks = @(
     @{ Name = 'PollLines'; Job = 'poll' },
+    @{ Name = 'Publish';   Job = 'publish' },
     @{ Name = 'Sunday';    Job = 'sunday' },
     @{ Name = 'Midweek';   Job = 'midweek' },
     @{ Name = 'Grade';     Job = 'grade' }
@@ -75,6 +77,19 @@ $triggers = @{
     PollLines = @(
         $t = New-ScheduledTaskTrigger -Once -At (Get-Date).Date.AddHours(2) `
             -RepetitionInterval (New-TimeSpan -Hours 6)
+        $t
+    )
+
+    # Hourly, and deliberately not on the hour: the prediction jobs all start
+    # on one, and a mirror running mid-write would publish half a slate.
+    #
+    # Publishing is otherwise only ever a side effect of a job that spends
+    # money, so a prediction made by hand waits for the next one -- up to three
+    # days over a quiet week. This costs nothing: it reads SQLite and writes
+    # about thirty Firestore documents, well inside the free tier even hourly.
+    Publish   = @(
+        $t = New-ScheduledTaskTrigger -Once -At (Get-Date).Date.AddMinutes(30) `
+            -RepetitionInterval (New-TimeSpan -Hours 1)
         $t
     )
 

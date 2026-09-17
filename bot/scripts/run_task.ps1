@@ -10,7 +10,7 @@
 #>
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('poll', 'sunday', 'midweek', 'grade')]
+    [ValidateSet('poll', 'publish', 'sunday', 'midweek', 'grade')]
     [string]$Job,
 
     [int]$Week,
@@ -69,6 +69,14 @@ Set-Location $root
 switch ($Job) {
     'poll' {
         Invoke-Edgelord @('poll-odds') | Out-Null
+    }
+    'publish' {
+        # Mirror only: no model calls, no odds credits, nothing written to the
+        # database. Publishing is otherwise a side effect of whichever job
+        # happens to run next, so a prediction made by hand can sit in SQLite
+        # for days while the dashboard shows the last scheduled slate. This is
+        # the job that closes that gap, and it is cheap enough to run hourly.
+        Invoke-Edgelord @('sync') | Out-Null
     }
     'sunday' {
         # `refresh` must precede `grade`: it is the only thing that writes final

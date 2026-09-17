@@ -118,8 +118,16 @@ Firebase project at all.
    gitignored local snapshot, which is absent from every deploy, so it renders
    empty rather than stale.
 
-The Sunday, Midweek and Grade scheduled jobs all call `sync` after they run, so
-the dashboard updates itself.
+The Sunday, Midweek and Grade scheduled jobs all call `sync` after they run, and
+an hourly `Publish` task mirrors on its own, so the dashboard updates itself —
+including after a prediction you ran by hand. To push one immediately:
+
+```powershell
+.\run.ps1 publish
+```
+
+That is a mirror only: no model calls, no odds credits, nothing written to the
+database.
 
 ### Placeholder data
 
@@ -143,17 +151,24 @@ Once `bot\.env` has both keys, from `bot/`:
 powershell -ExecutionPolicy Bypass -File scripts\register_tasks.ps1
 ```
 
-Registers four per-user tasks (no elevation needed):
+Registers five per-user tasks (no elevation needed):
 
 | Task | When | Does |
 |---|---|---|
 | `Edgelord\PollOdds` | every 6 hours | snapshots lines — this is what builds the open→close curve |
+| `Edgelord\Publish` | hourly, at :30 | mirrors the database to Firestore; no model calls |
 | `Edgelord\Sunday` | Sunday 10:00 | poll, grade, predict the slate, render the report |
-| `Edgelord\Midweek` | Thu + Mon 18:00 | re-poll, re-predict, re-render |
+| `Edgelord\Midweek` | Wed + Thu + Mon 11:00 | re-poll, re-predict, re-render |
 | `Edgelord\Grade` | Tuesday 09:00 | grade the completed week |
 
-Sunday runs at 10:00 so a sixteen-game slate is finished by 11:00. Logs land in
+Sunday runs at 10:00 so a sixteen-game slate is finished by 11:00. `Publish`
+exists because every other job publishes only as a side effect of spending
+money: without it, a prediction made by hand sits in SQLite until the next
+scheduled run, which over a quiet week is three days. Logs land in
 `logs\YYYY-MM.log`. Remove with `register_tasks.ps1 -Unregister`.
+
+Re-run `register_tasks.ps1` after pulling this change — it unregisters and
+recreates all five, so it is safe to run again.
 
 ## What's stored
 
