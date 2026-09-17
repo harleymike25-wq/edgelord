@@ -6,8 +6,8 @@ so performance can be graded across the season.
 
 ## Layout
 
-The repository root **is** the Next.js app, so it deploys to Vercel with no root
-directory setting. The Python bot lives in `bot/`.
+The repository root **is** the Next.js app, so it deploys to Netlify or Vercel
+with no root directory setting. The Python bot lives in `bot/`.
 
 ```
 app/  components/  lib/  public/     Next.js dashboard (repo root)
@@ -96,16 +96,27 @@ Firebase project at all.
 
 1. Create a Firebase project, enable Firestore, and download a service account key
    (Project settings → Service accounts → Generate new private key).
-2. Point the sync at it and push:
+2. Put the path in `bot/.env`, **not** in a shell — `FIREBASE_CREDENTIALS` is read
+   from there on every run, so the scheduled jobs and any window you happen to be
+   typing in all publish. Exported into one shell, only that shell can publish, and
+   a hand-run `predict` from any other one leaves the dashboard unchanged:
+   ```ini
+   FIREBASE_CREDENTIALS=C:\path\to\serviceAccount.json
+   ```
+   Then install the extra and push:
    ```powershell
-   $env:FIREBASE_CREDENTIALS = "C:\path\to\serviceAccount.json"
    .venv\Scripts\python.exe -m pip install -e ".[firebase]"
    .venv\Scripts\python.exe -m edgelord.cli sync
    ```
-   Add `FIREBASE_CREDENTIALS` to `.env` to make it stick for the scheduled jobs.
+   `sync` prints `firestore  wrote N game docs` when the dashboard changed. Anything
+   else means it did not, and a configured sync that fails to publish exits non-zero.
 3. Deploy the rules: `firebase deploy --only firestore`
-4. Deploy the app (`npx vercel` from the repo root), setting `FIREBASE_SERVICE_ACCOUNT`
-   to the **contents** of that JSON key as an environment variable.
+4. Deploy the app from the repo root, setting `FIREBASE_SERVICE_ACCOUNT` to the
+   **contents** of that JSON key (one line, not a file path) as an environment
+   variable — on Netlify that is Site configuration → Environment variables, and
+   `netlify.toml` covers the rest of the build. Without it the site reads the
+   gitignored local snapshot, which is absent from every deploy, so it renders
+   empty rather than stale.
 
 The Sunday, Midweek and Grade scheduled jobs all call `sync` after they run, so
 the dashboard updates itself.

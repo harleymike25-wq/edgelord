@@ -416,9 +416,28 @@ def cmd_sync(args) -> int:
     season = args.season or config.current_season()
     with db.session() as conn:
         out = sync.push(conn, season, week=args.week, snapshot=not args.no_snapshot)
+
+    published = out.pop("published", False)
+    configured = out.pop("configured", False)
     for k, v in out.items():
         print(f"{k:<14} {v}")
-    return 0
+
+    if published:
+        return 0
+
+    # The failure this guards is a quiet one: the run works, the snapshot is
+    # written, every line reads like success, and the dashboard never changes
+    # because the one line that mattered was in the middle of the output. A
+    # sync that meant to publish and could not is an error and exits like one.
+    print()
+    if not configured:
+        print(
+            "Note: nothing was published. The dashboard reads Firestore; this "
+            "run wrote only the local snapshot, which no deploy can see."
+        )
+        return 0
+    print(f"ERROR: the dashboard was NOT updated -- {out['firestore']}")
+    return 2
 
 
 def build_parser() -> argparse.ArgumentParser:

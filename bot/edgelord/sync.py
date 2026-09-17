@@ -28,35 +28,65 @@ COLLECTION = "games"
 META_COLLECTION = "meta"
 
 
-def _credentials_path() -> Path | None:
+# No Firebase project at all -- the documented development mode, and the one
+# reason for not publishing that is not a mistake.
+UNSET = (
+    "no credentials. Set FIREBASE_CREDENTIALS to a service account json, in "
+    "bot/.env rather than in one shell, or only the shell that exported it "
+    "can publish"
+)
+
+
+def _credentials() -> tuple[Path | None, str | None]:
+    """The key file, or the reason there is not one.
+
+    Every failure here used to read as "no credentials", which sends you to
+    check an environment variable that is usually already correct. The reason
+    a sync did not publish is the whole diagnosis, so it travels with it.
+    """
     raw = os.getenv("FIREBASE_CREDENTIALS")
-    if not raw:
-        return None
-    path = Path(raw)
+    if not raw or not raw.strip():
+        return None, UNSET
+    # A path copied out of Windows Explorer arrives wrapped in quotes, and the
+    # quoted string is not a file that exists. Nothing strips them on the way
+    # in, so the result is indistinguishable from the variable being unset.
+    path = Path(raw.strip().strip('"').strip("'"))
     if not path.is_absolute():
         path = config.ROOT / path
-    return path if path.exists() else None
+    if not path.exists():
+        return None, f"FIREBASE_CREDENTIALS points at {path}, which does not exist"
+    return path, None
+
+
+def _credentials_path() -> Path | None:
+    return _credentials()[0]
 
 
 def available() -> bool:
     return _credentials_path() is not None
 
 
-def _client():
-    """Lazily build a Firestore client. Returns None when unconfigured."""
-    creds = _credentials_path()
+def _client() -> tuple[object | None, str | None]:
+    """Lazily build a Firestore client, or say why there is not one."""
+    creds, reason = _credentials()
     if creds is None:
-        return None
+        return None, reason
     try:
         import firebase_admin
         from firebase_admin import credentials as fb_credentials
         from firebase_admin import firestore
     except ImportError:
-        return None
+        # Deliberately distinct from a credential problem: the key is fine and
+        # the optional extra is missing. Reporting this as "no credentials"
+        # sends you to the Firebase console to fix a pip install.
+        return None, (
+            "firebase-admin is not installed in this venv -- "
+            'pip install -e ".[firebase]"'
+        )
 
     if not firebase_admin._apps:
         firebase_admin.initialize_app(fb_credentials.Certificate(str(creds)))
-    return firestore.client()
+    return firestore.client(), None
 
 
 def _game_documents(conn, season: int, week: int | None) -> list[dict]:
@@ -280,17 +310,24 @@ def push(conn, season: int, *, week: int | None = None, snapshot: bool = True) -
         "predictions": sum(1 for g in payload["games"] if g["prediction"]),
         "firestore": "skipped",
         "snapshot": None,
+        # Whether the dashboard actually changed. A caller that only reads the
+        # prose line has to parse English to find that out.
+        "published": False,
+        # Whether publishing was even meant to happen. A run with no Firebase
+        # project configured is development mode; a run that meant to publish
+        # and could not is a fault, and the two must not report the same way.
+        "configured": False,
     }
 
     if snapshot:
         out["snapshot"] = str(write_snapshot(payload))
 
-    client = _client()
+    client, reason = _client()
     if client is None:
-        out["firestore"] = (
-            "no credentials (set FIREBASE_CREDENTIALS to a service account json)"
-        )
+        out["firestore"] = reason
+        out["configured"] = reason != UNSET
         return out
+    out["configured"] = True
 
     live = _live_week(conn, season)
     batch = client.batch()
@@ -327,4 +364,5 @@ def push(conn, season: int, *, week: int | None = None, snapshot: bool = True) -
     batch.commit()
 
     out["firestore"] = f"wrote {written} game docs + record-{season}"
+    out["published"] = True
     return out
