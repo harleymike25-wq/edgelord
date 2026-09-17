@@ -44,6 +44,7 @@ Last updated: 2026-09-17
 | **Post-mortem on the dashboard** | 2026-09-17: panel renders on `/game/2026_01_DAL_NYG` with the no-edge warning, and on `/game/2026_01_TB_CIN` in the neutral grey variance treatment. `tsc --noEmit` clean, 0 console errors. |
 | **Landing on the live week** | 2026-09-17: `/` resolves Week 2 by date and redirects there on both the Firestore and snapshot backends; nav reads `Wk 2` (current) then `Wk 1`. `_live_week` unit-tested at the two-day boundary, on a same-day kickoff tie, at season end and across seasons — it has to agree with `run_task.ps1` or the two disagree about which week is live on a Monday. |
 | **An unpicked week reads as unpicked** | 2026-09-17: Week 3 renders 16 cards saying "Not picked yet" on a dashed badge, under "Week 3 — 0 plays, 0 passes, 16 games". Every one previously said "No play", which is the model's word for a deliberate pass, so an unrun job looked like sixteen decisions. Full suite 206 passing. |
+| **Anchored projection, A/B'd on Week 1** | 2026-09-17: 16 live backtest calls, $4.11. The model is now asked for a move off the line rather than a margin from scratch. Winner agreement with the market went 69% → **100%**, mean move off the line **2.03 → 1.16**. Measured against the live pre-change picks on the same 16 games, not asserted — see "The underdog tilt" below for what it did *not* fix. Full suite 228 passing. |
 
 ## Ran exactly once, on a model we are no longer using
 
@@ -214,3 +215,46 @@ teach noise far more readily than signal, and the system prompt already warns
 that a single game carries roughly 13 points of standard error. The post-mortems
 are stored and displayed so a human can see the pattern; they do not steer the
 next pick.
+
+## The underdog tilt: measured, half-fixed (2026-09-17)
+
+Across all 32 live 2026 spread picks the bot took the points **25 times (78%)**
+and never laid more than 6.5. The cause was not a preference for dogs. It was
+the output format: the model was asked for a margin from scratch, a from-scratch
+margin regresses toward a pick'em, and a projection nearer zero than the spread
+argues for the underdog in *every* game it touches — so the side was being
+chosen by the shrinkage rather than by the factors. The projection sat closer to
+zero than the spread in **27 of 32** picks, and claimed edge split **+2.40 on
+dogs vs +0.29 on favourites**, which is the shrinkage showing up as "value".
+
+The fix asks for `market_adjustment` — how far the model moves the number —
+instead of the margin. Week 1 was then re-run under the new format and compared
+against the live pre-change picks on the same 16 games:
+
+| | free-floating | anchored | market |
+|---|---|---|---|
+| agrees with the market on the winner | 11/16 | **16/16** | — |
+| mean move off the line | 2.03 | **1.16** | — |
+| projection nearer zero than the spread | 13/16 | 11/16 | — |
+| took the dog | 11/16 | 11/16 | — |
+| MAE vs actual | 11.75 | 11.25 | 11.28 |
+| RMSE vs actual | 14.28 | 13.69 | 13.47 |
+
+What actually improved is the top two rows, and only those should be believed.
+They are properties of the format on a fixed set of games: the projection no
+longer wanders across zero from the market's favourite, and the average claimed
+edge halved. The accuracy rows moved the right way but by well under a point on
+sixteen games, which is noise — the same standard error the system prompt warns
+the model about applies to the agent evaluating it.
+
+**The dog rate did not move at all.** Eleven of sixteen adjustments still point
+away from the favourite, and the model returned an adjustment of **0 exactly
+zero times** despite the prompt saying 0 should be common. Anchoring made the
+tilt smaller and made it something the write-up has to argue for; it did not
+remove it. The next lever, if this persists over more weeks, is a computed
+guardrail that refuses conviction to edge which exists only because
+`|projection| < |spread|`.
+
+None of this reached the prompt as a statistic. The argument in the system
+prompt is that shrinkage manufactures dog edge, which is true a priori; the
+Week 1 numbers are the test of the change, not an input to it.

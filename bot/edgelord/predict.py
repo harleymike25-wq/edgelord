@@ -4,10 +4,13 @@ Uses structured outputs (`output_config.format`) rather than tool use, so the
 response is guaranteed to parse. Opus 4.8 takes adaptive thinking and rejects
 `temperature`/`top_p`/`top_k`, so none are sent.
 
-The system prompt does two jobs beyond framing: it states the sign conventions
-explicitly (a flipped spread would silently invert every pick) and it tells the
-model that passing is an acceptable answer. A model that must produce a play on
-all sixteen games will invent edges on the twelve where it has none.
+The system prompt does two jobs beyond framing. It states the sign conventions
+explicitly, since a flipped spread would silently invert every pick. And it asks
+for the number as a move off the market line -- `market_adjustment` -- rather
+than as a margin projected from scratch, because a from-scratch margin drifts
+toward a pick'em and a projection nearer zero than the spread argues for the
+underdog in every game it touches. `derived_margin` turns the move back into the
+home margin the rest of the system stores.
 """
 
 from __future__ import annotations
@@ -27,8 +30,10 @@ assessment plus a recommended play.
 CONVENTIONS — read carefully, these are easy to invert:
 - `spread_home` is positive when the HOME team is favoured. A `current_spread_home` \
 of 3.0 means the home team is laying 3 points.
-- `projected_margin` you return is the HOME team's margin: positive means the home \
-team wins by that many.
+- `market_adjustment` is what you return in place of a margin: how many points \
+you move the market spread, positive toward the HOME team. 0 means the number is \
+right. Moving a home favourite of 3 by -2 makes it a 1-point home win; moving it \
+by +2 makes it a 5-point home win.
 - Efficiency EPA values are per play. For OFFENSE, higher is better. For DEFENSE, \
 LOWER is better (a defensive EPA of -0.10 is a good defence).
 - `epa_adj` and `success_adj` are opponent-adjusted; prefer them over the raw values.
@@ -64,6 +69,30 @@ over, so a 2017 result says little about this week.
 - Referee effects are weak and noisy. Mention them only when genuinely extreme, \
 and never build a play on them.
 
+STATE YOUR NUMBER AS A MOVE, NOT A SCORE:
+You do not return a projected margin. You return `market_adjustment` — how far \
+you move the market's number, and which way. The size of that move is your edge \
+in points; its direction names the side you should be taking. Those are not two \
+separate judgements, and they must agree: if you move the number toward the away \
+team, the away team is your pick.
+
+This is asked for in this shape on purpose. A margin produced from scratch drifts \
+toward a close game, because a number near a pick'em is the safest guess when the \
+inputs are noisy. But the spread is ALREADY the market's best estimate, and a \
+projection that sits closer to zero than the spread makes the underdog look like \
+value in every game it happens to — regardless of what the matchup says. An edge \
+manufactured that way is an artefact of hedging, not a read, and it points at the \
+dog every time.
+
+So treat a move toward a closer game as a claim like any other. Make it only when \
+you can name the mechanism and say roughly what it is worth. If you cannot say \
+WHY the market's margin is too wide, the honest adjustment is 0.
+
+0 is a good answer and should be a common one. Most games are priced correctly \
+and the right response to a correctly priced game is a small adjustment and a \
+"lean", not a manufactured reason to move the number. Moving it toward the \
+favourite is equally available to you whenever the case is there.
+
 ALWAYS PICK A SIDE, THEN RATE YOUR CONVICTION:
 Every game gets a side. There is no pass option and no "none" -- if the pack is \
 thin, say so in the write-up and still name the side you would take at gunpoint. \
@@ -80,7 +109,8 @@ being worth betting.
 Set `conviction` to one of:
 
 - "best_bet" — you would actually put money on this. Requires EITHER a \
-projection edge of at least 2 points (at least 3 when `efficiency_provenance` \
+`market_adjustment` of at least 2 points toward the side you are taking (at \
+least 3 when `efficiency_provenance` \
 shows the figures are mostly prior-season, or `roster_turnover` reports \
 continuity below about 0.7 for either team), OR a clear key-number edge where \
 the number itself is mispositioned — taking a dog at +3.5 on a game that \
@@ -94,9 +124,8 @@ is a perfectly good lean.
 On a normal slate expect a handful of best bets and mostly leans. If most of a \
 card comes back "best_bet", the bar has been set too low.
 
-The edge you describe in the paragraph must match your `projected_margin` \
-against the market number. Do not claim "three points of value" while your \
-projection sits one point from the line.
+The edge you describe in the paragraph must match `market_adjustment`. Do not \
+claim "three points of value" while moving the number by one.
 
 ARGUE THE PICK, DO NOT NARRATE IT:
 The market number already reflects everything obvious about both teams. So a \
@@ -208,9 +237,15 @@ RESPONSE_SCHEMA = {
                 "Calibrated confidence from 1 to 100. Above 65 should be rare."
             ),
         },
-        "projected_margin": {
+        "market_adjustment": {
             "type": "number",
-            "description": "Projected home margin; positive means the home team wins by this.",
+            "description": (
+                "How many points you move the market spread, positive toward "
+                "the HOME team. 0 means the number is right. Moving a home "
+                "favourite of 3 by -2 makes it a 1-point home win. The size of "
+                "this move is your edge in points and its direction names your "
+                "side, so it must agree with pick_side."
+            ),
         },
         "projected_total": {
             "type": "number",
@@ -274,7 +309,7 @@ RESPONSE_SCHEMA = {
         "pick_side",
         "conviction",
         "confidence",
-        "projected_margin",
+        "market_adjustment",
         "projected_total",
         "headline",
         "paragraph",
@@ -283,6 +318,26 @@ RESPONSE_SCHEMA = {
     ],
     "additionalProperties": False,
 }
+
+
+def derived_margin(pack: dict, result: dict) -> float:
+    """The home margin implied by the model's move off the market number.
+
+    The model is asked how far it moves the line, not what the final margin
+    will be, and this turns that move back into a margin so nothing downstream
+    has to know the difference.
+
+    Asking for the margin directly produced numbers systematically shrunk
+    toward a pick'em, and a projection closer to zero than the spread makes the
+    underdog look like value whatever the matchup says -- so the side was being
+    chosen by the shrinkage rather than by the factors. Stating the move makes
+    it an argument the write-up has to carry instead of a hedge the format
+    invites. A missing market number falls back to a pick'em baseline, which
+    keeps the field meaning the same thing in the rare game with no line.
+    """
+    spread = (pack.get("market") or {}).get("current_spread_home")
+    base = 0.0 if spread is None else float(spread)
+    return round(base + float(result["market_adjustment"]), 2)
 
 
 def _client() -> anthropic.Anthropic:
@@ -419,6 +474,9 @@ def predict(
         raise RuntimeError(f"no text block returned for {pack['game']['game_id']}")
 
     out = json.loads(text)
+    # Derived here rather than at storage time so the CLI, the report and the
+    # stored row all read the same number off one calculation.
+    out["projected_margin"] = derived_margin(pack, out)
     out["_model"] = response.model
     out["_usage"] = usage
     out["_cost_usd"] = cost
