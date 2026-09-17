@@ -261,13 +261,34 @@ projection. Anchoring flipped it — not by predicting the Giants, but because a
 move stated off the line cannot silently contradict the side it names. That
 failure mode is now structurally unavailable.
 
-**The dog rate did not move at all.** Eleven of sixteen adjustments still point
+**On Week 2 the dog rate did move, a lot.** The live slate was re-predicted
+under the anchored format on 2026-09-17, replacing 16 free-floating picks made
+by that morning's scheduled job:
+
+| | free-floating | anchored |
+|---|---|---|
+| took the points | **14/16 (88%)** | **7/15 (47%)** |
+| projection nearer zero than the spread | 14/16 | 7/15 |
+| mean move off the line | 2.25 | 1.20 |
+
+Seven of sixteen picks changed side and one left the spread market entirely
+(LV/LAC became a total, the first total pick of 2026). Same games, same feature
+packs, same day — the output format is the only variable, which makes this a
+paired measurement of the change rather than an outcome that two lucky games
+could flip. It says nothing about whether the picks are *better*.
+
+**On the Week 1 backtest the dog rate did not move at all.** Eleven of sixteen adjustments still point
 away from the favourite, and the model returned an adjustment of **0 exactly
 zero times** despite the prompt saying 0 should be common. Anchoring made the
 tilt smaller and made it something the write-up has to argue for; it did not
-remove it. The next lever, if this persists over more weeks, is a computed
-guardrail that refuses conviction to edge which exists only because
+remove it on that slate. The next lever, if the tilt returns over more weeks, is
+a computed guardrail that refuses conviction to edge which exists only because
 `|projection| < |spread|`.
+
+Across both weeks — 31 anchored spread picks — the model has returned an
+adjustment of exactly **0 zero times**, despite the prompt saying 0 should be a
+common answer. Whatever else anchoring fixed, it did not buy the ability to
+agree with the market outright.
 
 None of this reached the prompt as a statistic. The argument in the system
 prompt is that shrinkage manufactures dog edge, which is true a priori; the
