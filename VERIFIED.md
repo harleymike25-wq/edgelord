@@ -247,6 +247,20 @@ edge halved. The accuracy rows moved the right way but by well under a point on
 sixteen games, which is noise — the same standard error the system prompt warns
 the model about applies to the agent evaluating it.
 
+Graded head to head on the same sixteen games, the anchored picks go **8-7-1,
++0.27 units** against the live **6-9-1, -3.55 units**. That number should be
+treated as almost meaningless: **14 of the 16 picks are identical**, and the
+entire difference is two flips (DAL/NYG and DEN/KC) that both happened to land.
+Had they gone the other way the identical change would read 4-11-1. Quoted here
+only because it will otherwise be misremembered as "the fix turned a losing week
+around".
+
+The one non-random piece of it: DAL/NYG is the pick whose write-up argued for a
+side "plus the field goal" while laying three, with a -3.5 edge by its own
+projection. Anchoring flipped it — not by predicting the Giants, but because a
+move stated off the line cannot silently contradict the side it names. That
+failure mode is now structurally unavailable.
+
 **The dog rate did not move at all.** Eleven of sixteen adjustments still point
 away from the favourite, and the model returned an adjustment of **0 exactly
 zero times** despite the prompt saying 0 should be common. Anchoring made the
