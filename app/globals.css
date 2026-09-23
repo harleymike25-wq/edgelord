@@ -449,3 +449,6 @@ table.ratings td.pos { color: var(--win); }
 table.ratings td.neg { color: var(--loss); }
 table.ratings td.dim { color: var(--dim); }
 table.ratings a { color: var(--text); }
+table.ratings td:first-child { white-space: nowrap; }
+table.stacked .cell-rec { display: block; color: var(--text); font-weight: 600; }
+table.stacked .cell-u { display: block; font-size: .78rem; }

@@ -3,6 +3,7 @@ import {
   ConfidenceTracking,
   EvidenceBadge,
   RecordRow,
+  SpreadRecord,
   SummaryTable,
   WeeklyRecord,
 } from "@/components/Stats";
@@ -48,6 +49,9 @@ export default async function RecordPage() {
         <>
           <h3 className="section">By week</h3>
           <WeeklyRecord games={payload.games} />
+
+          <h3 className="section">By spread</h3>
+          <SpreadRecord games={payload.games} />
 
           <h3 className="section">By conviction</h3>
           <SummaryTable rows={record.by_conviction ?? {}} label="Conviction" />

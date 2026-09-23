@@ -279,3 +279,67 @@ export function WeeklyRecord({ games }: { games: Game[] }) {
     </table>
   );
 }
+
+const SPREAD_BANDS: { label: string; lo: number; hi: number }[] = [
+  { label: "Under 3", lo: 0, hi: 2.5 },
+  { label: "3 to 6.5", lo: 3, hi: 6.5 },
+  { label: "7 to 9.5", lo: 7, hi: 9.5 },
+  { label: "10+", lo: 10, hi: Infinity },
+];
+
+/**
+ * Spread picks by the size of the number and by which side was taken.
+ *
+ * Split both ways because the bot's known habit lives in the corner of this
+ * table: it takes the underdog on big spreads. Size alone would average that
+ * away. `line_at_pick` is stored from the picked side: positive = favourite.
+ */
+export function SpreadRecord({ games }: { games: Game[] }) {
+  const rows = SPREAD_BANDS.map((b) => ({ ...b, fav: tally(), dog: tally(), all: tally() }));
+  for (const g of games) {
+    const p = g.prediction;
+    const r = g.result;
+    if (!r || !p || p.pick_type !== "spread" || p.line_at_pick === null) continue;
+    const size = Math.abs(p.line_at_pick);
+    const row = rows.find((b) => size >= b.lo && size <= b.hi) ?? rows[rows.length - 1];
+    add(row.all, r.pick_result, r.profit_units);
+    if (p.line_at_pick > 0) add(row.fav, r.pick_result, r.profit_units);
+    else if (p.line_at_pick < 0) add(row.dog, r.pick_result, r.profit_units);
+  }
+  const shown = rows.filter((r) => r.all.w + r.all.l + r.all.p > 0);
+  if (!shown.length) return null;
+
+  const cls = (t: Tally) => (t.w + t.l + t.p === 0 ? "dim" : t.u > 0 ? "pos" : t.u < 0 ? "neg" : "");
+  const cell = (t: Tally) =>
+    t.w + t.l + t.p ? (
+      <>
+        <span className="cell-rec">{rec(t)}</span>
+        <span className="cell-u">{units(t.u)}</span>
+      </>
+    ) : (
+      "—"
+    );
+
+  return (
+    <table className="ratings stacked">
+      <thead>
+        <tr>
+          <th>Spread</th>
+          <th>Favourite</th>
+          <th>Underdog</th>
+          <th>All</th>
+        </tr>
+      </thead>
+      <tbody>
+        {shown.map((r) => (
+          <tr key={r.label}>
+            <td>{r.label}</td>
+            <td className={cls(r.fav)}>{cell(r.fav)}</td>
+            <td className={cls(r.dog)}>{cell(r.dog)}</td>
+            <td className={cls(r.all)}>{cell(r.all)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
