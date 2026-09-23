@@ -1,43 +1,52 @@
 import Link from "next/link";
 
-import { clv, pct, units } from "@/lib/format";
+import { pct, units } from "@/lib/format";
 import type { Evidence, Summary, WeeklyPoint } from "@/lib/types";
 
-export function Strip({
-  s,
-  href,
-  label = "Record",
-  compact = false,
-}: {
-  s: Summary;
-  href?: string;
-  label?: string;
-  /** Secondary row: fewer stats, quieter, so it does not compete with the headline. */
-  compact?: boolean;
-}) {
-  const tone = (n: number | null | undefined) =>
-    n === null || n === undefined ? "" : n > 0 ? "pos" : n < 0 ? "neg" : "";
+const tone = (n: number | null | undefined) =>
+  n === null || n === undefined ? "" : n > 0 ? "pos" : n < 0 ? "neg" : "";
 
+/**
+ * Both records side by side: best bets are what would have been staked, all
+ * picks include every lean. Record and units only -- plays is the record's
+ * sum, ROI is units over plays, there are no passes by design, and CLV is not
+ * measurable until a second line source exists.
+ */
+export function RecordRow({
+  best,
+  all,
+  href,
+}: {
+  best: Summary;
+  all: Summary;
+  href?: string;
+}) {
+  const pending = all.pending ?? 0;
   const body = (
-    <div className={`strip ${compact ? "compact" : ""}`}>
-      <Stat k={label} v={s.record || "0-0"} />
-      <Stat k="Units" v={units(s.units)} tone={tone(s.units)} />
-      <Stat k="ROI" v={pct(s.roi)} tone={tone(s.roi)} />
-      {!compact && <Stat k="Avg CLV" v={clv(s.avg_clv)} tone={tone(s.avg_clv)} />}
-      <Stat k="Plays" v={`${s.plays ?? 0}`} />
-      {!compact && <Stat k="Passes" v={`${s.passes ?? 0}`} />}
-      {s.pending ? <Stat k="Pending" v={`${s.pending}`} /> : null}
+    <div className="records">
+      <RecordTile label="Best bets" s={best} primary />
+      <RecordTile label="All picks" s={all} />
+      {pending > 0 && <div className="records-pending">{pending} pending</div>}
     </div>
   );
-
-  // The CLV trend and confidence-bucket breakdown still exist; they hang off
-  // the strip rather than occupying a nav tab.
   return href ? (
     <Link href={href} className="strip-link">
       {body}
     </Link>
   ) : (
     body
+  );
+}
+
+function RecordTile({ label, s, primary = false }: { label: string; s: Summary; primary?: boolean }) {
+  return (
+    <div className={`record-tile ${primary ? "primary" : ""}`}>
+      <div className="k">{label}</div>
+      <div className="v">
+        {s.record || "0-0"}
+        <span className={`u ${tone(s.units)}`}>{units(s.units)}</span>
+      </div>
+    </div>
   );
 }
 
@@ -75,15 +84,6 @@ export function EvidenceBadge({ e }: { e: Evidence }) {
   );
 }
 
-function Stat({ k, v, tone = "" }: { k: string; v: string; tone?: string }) {
-  return (
-    <div className="stat">
-      <div className="k">{k}</div>
-      <div className={`v ${tone}`}>{v}</div>
-    </div>
-  );
-}
-
 export function SummaryTable({
   rows,
   label,
@@ -102,7 +102,6 @@ export function SummaryTable({
           <th>Win%</th>
           <th>Units</th>
           <th>ROI</th>
-          <th>CLV</th>
         </tr>
       </thead>
       <tbody>
@@ -117,7 +116,6 @@ export function SummaryTable({
             <td className={(s.roi ?? 0) > 0 ? "pos" : (s.roi ?? 0) < 0 ? "neg" : ""}>
               {pct(s.roi)}
             </td>
-            <td>{clv(s.avg_clv)}</td>
           </tr>
         ))}
       </tbody>
@@ -162,7 +160,6 @@ export function ConfidenceTracking({
             <th>Record</th>
             <th>Win%</th>
             <th>Units</th>
-            <th>CLV</th>
           </tr>
         </thead>
         <tbody>
@@ -181,7 +178,6 @@ export function ConfidenceTracking({
               <td className={s.units > 0 ? "pos" : s.units < 0 ? "neg" : ""}>
                 {units(s.units)}
               </td>
-              <td>{clv(s.avg_clv)}</td>
             </tr>
           ))}
         </tbody>

@@ -18,16 +18,15 @@ export function Masthead({ payload }: { payload: SeasonPayload }) {
     <>
       <div className="masthead">
         <Logo />
-        <div className="masthead-meta">
-          <span className="season">{payload.season} season</span>
-          <Link href="/ratings" className="nav-link">
-            Power ratings
-          </Link>
-        </div>
+        <nav className="masthead-nav">
+          <Link href="/">Picks</Link>
+          <Link href="/record">Record</Link>
+          <Link href="/ratings">Ratings</Link>
+        </nav>
       </div>
       <p className="generated">
-        Updated {when.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}
-        {payload.source === "snapshot" ? " · local snapshot" : " · firestore"}
+        {payload.season} season · updated{" "}
+        {when.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}
       </p>
     </>
   );

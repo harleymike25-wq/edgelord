@@ -1,10 +1,8 @@
-import Link from "next/link";
-
 import { Masthead, SyntheticBanner } from "@/components/Chrome";
 import {
   ConfidenceTracking,
   EvidenceBadge,
-  Strip,
+  RecordRow,
   SummaryTable,
   UnitsTrend,
 } from "@/components/Stats";
@@ -28,22 +26,12 @@ export default async function RecordPage() {
   return (
     <>
       <Masthead payload={payload} />
-      <Link href="/" className="back">
-        ← Slate
-      </Link>
       <SyntheticBanner payload={payload} />
 
-      {/* Two records, deliberately separate. Best bets are what would actually
-          have been staked; leans are recorded opinions. Averaging them into one
-          number would flatter or punish the model for picks nobody made. */}
-      <h3 className="section">Best bets — what it would have staked</h3>
-      <Strip s={record.best_bets ?? record.overall} label="Best bets" />
+      <RecordRow best={record.best_bets ?? record.overall} all={record.overall} />
       {payload.evidence && payload.evidence.plays_decided > 0 && (
         <EvidenceBadge e={payload.evidence} />
       )}
-
-      <h3 className="section">Every pick, including leans</h3>
-      <Strip s={record.overall} label="All picks" />
 
       {!graded && (
         <div className="empty">
@@ -79,18 +67,7 @@ export default async function RecordPage() {
         discrimination={payload.evidence?.discrimination}
       />
 
-      {graded && (
-        <>
-          <h3 className="section">On closing line value</h3>
-          <p className="note">
-            CLV is the gap between the number we took and where the market
-            settled. Positive means we were consistently on the better side of the
-            number, which is the most reliable early evidence of an edge — win
-            rate over a 17-week sample is mostly noise. If average CLV sits at or
-            below zero, the model is describing the market rather than beating it.
-          </p>
-        </>
-      )}
+
     </>
   );
 }

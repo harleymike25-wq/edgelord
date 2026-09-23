@@ -73,5 +73,3 @@ export function finalScore(game: Game): string | null {
   return `${game.away_team} ${game.final.away} – ${game.home_team} ${game.final.home}`;
 }
 
-/** Confidence above this is rare and worth flagging in the UI. */
-export const HIGH_CONFIDENCE = 65;

@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 import {
-  HIGH_CONFIDENCE,
   describePick,
   finalScore,
   kickoff,
@@ -50,16 +49,8 @@ export function GameCard({ game }: { game: Game }) {
         <div>
           <ConvictionTag conviction={p?.conviction} />
           <PickBadge game={game} />
-          {/* Shown on leans too: a lean at 30 is a different statement from a
-              lean at 55, and both are worth tracking. */}
-          {p && (
-            <div className="conf">
-              <ConfidenceDots value={p.confidence} muted={p.pick_type === "pass"} />
-              <span className={p.confidence >= HIGH_CONFIDENCE ? "high" : ""}>
-                {p.confidence}
-              </span>
-              {game.result && ` · ${units(game.result.profit_units)}`}
-            </div>
+          {game.result && (
+            <div className="conf">{units(game.result.profit_units)}</div>
           )}
         </div>
       </div>
@@ -74,28 +65,6 @@ export function GameCard({ game }: { game: Game }) {
 
       {score && <div className="scoreline">Final {score}</div>}
     </Link>
-  );
-}
-
-/**
- * Five dots for a 1-100 confidence, so the level reads at a glance without
- * implying more precision than the number carries.
- */
-export function ConfidenceDots({
-  value,
-  muted = false,
-}: {
-  value: number;
-  muted?: boolean;
-}) {
-  // 50 is a coin flip; the scale that matters runs from there to ~75.
-  const filled = Math.max(0, Math.min(5, Math.round((value - 40) / 7)));
-  return (
-    <span className={`dots ${muted ? "muted" : ""}`} aria-label={`confidence ${value}`}>
-      {[0, 1, 2, 3, 4].map((i) => (
-        <i key={i} className={i < filled ? "on" : ""} />
-      ))}
-    </span>
   );
 }
 

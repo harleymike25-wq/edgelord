@@ -41,9 +41,6 @@ export default async function RatingsPage() {
     return (
       <>
         {season && <Masthead payload={season} />}
-        <Link href="/" className="back">
-          ← Slate
-        </Link>
         <div className="empty">
           <p>No power ratings yet.</p>
           <p>
@@ -64,9 +61,6 @@ export default async function RatingsPage() {
   return (
     <>
       <Masthead payload={season} />
-      <Link href="/" className="back">
-        ← Slate
-      </Link>
 
       <h3 className="section">Power ratings — before Week {ratings.week}</h3>
 
@@ -91,31 +85,6 @@ export default async function RatingsPage() {
           )}
         </p>
       )}
-
-      <div className="strip">
-        <div className="stat">
-          <div className="k">Replay games</div>
-          <div className="v">{r.games.toLocaleString()}</div>
-        </div>
-        <div className="stat">
-          <div className="k">RMSE rating / line</div>
-          <div className="v">
-            {r.model?.rmse} / {r.market?.rmse}
-          </div>
-        </div>
-        <div className="stat">
-          <div className="k">Weight vs line</div>
-          <div className={`v ${good ? "pos" : "neg"}`}>
-            {signed(r.market_weight?.beta, 2)}
-          </div>
-        </div>
-        <div className="stat">
-          <div className="k">ATS, every game</div>
-          <div className={`v ${(all?.units ?? 0) > 0 ? "pos" : "neg"}`}>
-            {all ? `${all.w}-${all.l}-${all.p}` : "—"}
-          </div>
-        </div>
-      </div>
 
       <h3 className="section">Week {ratings.week}: rating vs market</h3>
       <table className="ratings">
