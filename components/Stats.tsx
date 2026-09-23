@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { pct, units } from "@/lib/format";
-import type { Evidence, Summary, WeeklyPoint } from "@/lib/types";
+import type { Evidence, Game, Summary } from "@/lib/types";
 
 const tone = (n: number | null | undefined) =>
   n === null || n === undefined ? "" : n > 0 ? "pos" : n < 0 ? "neg" : "";
@@ -205,55 +205,77 @@ export function ConfidenceTracking({
   );
 }
 
-/**
- * Cumulative units by week. Hand-drawn SVG rather than a charting dependency --
- * it is one polyline and a zero axis.
- */
-export function UnitsTrend({ weekly }: { weekly: WeeklyPoint[] }) {
-  if (weekly.length < 2) return null;
+type Tally = { w: number; l: number; p: number; u: number };
 
-  // Kept close to 3:1 so the chart stays legible when it scales down to a
-  // phone; a wider viewBox collapses to a sliver at 375px.
-  const w = 600;
-  const h = 190;
-  const pad = 26;
+function tally(): Tally {
+  return { w: 0, l: 0, p: 0, u: 0 };
+}
+
+function add(t: Tally, result: string, profit: number) {
+  if (result === "win") t.w++;
+  else if (result === "loss") t.l++;
+  else t.p++;
+  t.u += profit;
+}
+
+function rec(t: Tally): string {
+  return t.w + t.l + t.p ? `${t.w}-${t.l}${t.p ? `-${t.p}` : ""}` : "—";
+}
+
+/**
+ * Record week by week, newest first, from the graded games themselves. Best
+ * bets get their own column because they are the record that counts; the
+ * running total shows the season's shape without needing the chart.
+ */
+export function WeeklyRecord({ games }: { games: Game[] }) {
+  const weeks = new Map<number, { all: Tally; best: Tally }>();
+  for (const g of games) {
+    const r = g.result;
+    if (!r || !g.prediction || g.prediction.pick_type === "pass") continue;
+    const row = weeks.get(g.week) ?? { all: tally(), best: tally() };
+    add(row.all, r.pick_result, r.profit_units);
+    if (g.prediction.conviction === "best_bet") add(row.best, r.pick_result, r.profit_units);
+    weeks.set(g.week, row);
+  }
+  if (!weeks.size) return null;
 
   let running = 0;
-  const pts = weekly.map((p) => {
-    running += p.units;
-    return { week: p.week, cum: running };
-  });
+  const rows = [...weeks.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([week, t]) => {
+      running += t.all.u;
+      return { week, ...t, running };
+    })
+    .reverse();
 
-  const ys = pts.map((p) => p.cum).concat(0);
-  const lo = Math.min(...ys);
-  const hi = Math.max(...ys);
-  const span = hi - lo || 1;
-
-  const x = (i: number) => pad + (i * (w - pad * 2)) / Math.max(1, pts.length - 1);
-  const y = (v: number) => h - pad - ((v - lo) / span) * (h - pad * 2);
-
-  const line = pts.map((p, i) => `${x(i)},${y(p.cum)}`).join(" ");
-  const last = pts[pts.length - 1];
+  const cls = (n: number) => (n > 0 ? "pos" : n < 0 ? "neg" : "");
 
   return (
-    // A fixed height against a wide viewBox leaves dead space once
-    // preserveAspectRatio scales the drawing to the container width, so let the
-    // aspect ratio set the height instead.
-    <svg viewBox={`0 0 ${w} ${h}`} role="img"
-         style={{ width: "100%", height: "auto", display: "block" }}
-         aria-label={`Cumulative units through week ${last.week}: ${last.cum.toFixed(2)}`}>
-      <line x1={pad} x2={w - pad} y1={y(0)} y2={y(0)}
-            stroke="#3a424b" strokeWidth="1" strokeDasharray="3 3" />
-      <polyline points={line} fill="none" strokeWidth="2"
-                stroke={last.cum >= 0 ? "#4ade80" : "#f87171"} />
-      {pts.map((p, i) => (
-        <circle key={p.week} cx={x(i)} cy={y(p.cum)} r="2.5"
-                fill={last.cum >= 0 ? "#4ade80" : "#f87171"} />
-      ))}
-      <text x={pad} y={y(0) - 6} fill="#6b7280" fontSize="11">0u</text>
-      <text x={w - pad} y={y(last.cum) - 8} fill="#939aa4" fontSize="11" textAnchor="end">
-        {last.cum >= 0 ? "+" : ""}{last.cum.toFixed(2)}u
-      </text>
-    </svg>
+    <table className="ratings">
+      <thead>
+        <tr>
+          <th>Week</th>
+          <th>Record</th>
+          <th>Units</th>
+          <th>Best bets</th>
+          <th>Season</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r) => (
+          <tr key={r.week}>
+            <td>
+              <Link href={`/week/${r.week}`}>Week {r.week}</Link>
+            </td>
+            <td>{rec(r.all)}</td>
+            <td className={cls(r.all.u)}>{units(r.all.u)}</td>
+            <td className={r.best.w + r.best.l + r.best.p ? cls(r.best.u) : "dim"}>
+              {rec(r.best)}
+            </td>
+            <td className={cls(r.running)}>{units(r.running)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }

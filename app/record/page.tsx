@@ -4,7 +4,7 @@ import {
   EvidenceBadge,
   RecordRow,
   SummaryTable,
-  UnitsTrend,
+  WeeklyRecord,
 } from "@/components/Stats";
 import { loadSeason } from "@/lib/data";
 
@@ -20,7 +20,7 @@ export default async function RecordPage() {
     );
   }
 
-  const { record, weekly } = payload;
+  const { record } = payload;
   const graded = record.overall.plays > 0;
 
   return (
@@ -46,12 +46,8 @@ export default async function RecordPage() {
 
       {graded && (
         <>
-          {weekly.length > 1 && (
-            <>
-              <h3 className="section">Cumulative units</h3>
-              <UnitsTrend weekly={weekly} />
-            </>
-          )}
+          <h3 className="section">By week</h3>
+          <WeeklyRecord games={payload.games} />
 
           <h3 className="section">By conviction</h3>
           <SummaryTable rows={record.by_conviction ?? {}} label="Conviction" />
