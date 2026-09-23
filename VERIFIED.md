@@ -44,6 +44,8 @@ Last updated: 2026-09-17
 | **Post-mortem on the dashboard** | 2026-09-17: panel renders on `/game/2026_01_DAL_NYG` with the no-edge warning, and on `/game/2026_01_TB_CIN` in the neutral grey variance treatment. `tsc --noEmit` clean, 0 console errors. |
 | **Landing on the live week** | 2026-09-17: `/` resolves Week 2 by date and redirects there on both the Firestore and snapshot backends; nav reads `Wk 2` (current) then `Wk 1`. `_live_week` unit-tested at the two-day boundary, on a same-day kickoff tie, at season end and across seasons — it has to agree with `run_task.ps1` or the two disagree about which week is live on a Monday. |
 | **An unpicked week reads as unpicked** | 2026-09-17: Week 3 renders 16 cards saying "Not picked yet" on a dashed badge, under "Week 3 — 0 plays, 0 passes, 16 games". Every one previously said "No play", which is the model's word for a deliberate pass, so an unrun job looked like sixteen decisions. Full suite 206 passing. |
+| **Week 2 graded, the first anchored week** | 2026-09-23: `refresh` took 2026 to 32 final scores, `grade` wrote 48 rows. Week 2 **10-6-0, +3.09 units** against Week 1's 6-9-1, -3.55. Season 16-15-1, -0.45 units. The first total pick of the year (LV/LAC under 43.5) won. Sixteen games, so the record is not evidence — the loss arithmetic below is. |
+| **Week 2 post-mortems** | 2026-09-23: 6 losses, 6 explained, 0 failed, $0.37. Verdicts went 4 `thesis_right_variance` / 1 `bad_input` / 1 `thesis_wrong`, near-inverting Week 1's 8 `thesis_wrong` / 1 variance — and the computed misses moved with them (mean 16.3 → 9.3, median 17.5 → 8.2), so the softer verdicts are backed by arithmetic rather than self-flattery. |
 | **Anchored projection, A/B'd on Week 1** | 2026-09-17: 16 live backtest calls, $4.11. The model is now asked for a move off the line rather than a margin from scratch. Winner agreement with the market went 69% → **100%**, mean move off the line **2.03 → 1.16**. Measured against the live pre-change picks on the same 16 games, not asserted — see "The underdog tilt" below for what it did *not* fix. Full suite 228 passing. |
 
 ## Ran exactly once, on a model we are no longer using
@@ -289,6 +291,30 @@ Across both weeks — 31 anchored spread picks — the model has returned an
 adjustment of exactly **0 zero times**, despite the prompt saying 0 should be a
 common answer. Whatever else anchoring fixed, it did not buy the ability to
 agree with the market outright.
+
+### What Week 2 actually settled, and what it did not
+
+Graded on 2026-09-23. Week 2 went **10-6, +3.09 units** — the first winning week,
+and also the first fully anchored one. That pairing is exactly the coincidence
+this file exists to resist: it is sixteen games, and a 10-6 is one bounce away
+from a 6-10. It is not evidence.
+
+What *is* evidence, because it is measured rather than won:
+
+- **Losing projections are landing half as far off.** Mean miss on a losing
+  spread pick went 16.3 → 9.3, median 17.5 → 8.2. The post-mortem verdicts
+  flipped from 8-of-9 `thesis_wrong` to 4-of-6 `thesis_right_variance`, and that
+  shift is backed by the arithmetic rather than by the model being kinder to
+  itself.
+- **The dog tilt corrected** (88% → 47%, above).
+
+And the number that got worse, or at least did not get better:
+
+- **CLV is bad.** Average +0.03, and only **15.6% of picks beat the closing
+  line**. On samples this small, closing line value is a better signal than
+  win-loss, and one-in-six is poor — it says the bot is generally taking a worse
+  number than the market settles on, whatever the scoreboard does. Anchoring did
+  nothing for this, and a 10-6 week should not be allowed to hide it.
 
 None of this reached the prompt as a statistic. The argument in the system
 prompt is that shrinkage manufactures dog edge, which is true a priori; the
