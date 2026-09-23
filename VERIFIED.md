@@ -46,6 +46,7 @@ Last updated: 2026-09-23
 | **An unpicked week reads as unpicked** | 2026-09-17: Week 3 renders 16 cards saying "Not picked yet" on a dashed badge, under "Week 3 — 0 plays, 0 passes, 16 games". Every one previously said "No play", which is the model's word for a deliberate pass, so an unrun job looked like sixteen decisions. Full suite 206 passing. |
 | **Week 2 graded, the first anchored week** | 2026-09-23: `refresh` took 2026 to 32 final scores, `grade` wrote 48 rows. Week 2 **10-6-0, +3.09 units** against Week 1's 6-9-1, -3.55. Season 16-15-1, -0.45 units. The first total pick of the year (LV/LAC under 43.5) won. Sixteen games, so the record is not evidence — the loss arithmetic below is. |
 | **Week 2 post-mortems** | 2026-09-23: 6 losses, 6 explained, 0 failed, $0.37. Verdicts went 4 `thesis_right_variance` / 1 `bad_input` / 1 `thesis_wrong`, near-inverting Week 1's 8 `thesis_wrong` / 1 variance — and the computed misses moved with them (mean 16.3 → 9.3, median 17.5 → 8.2), so the softer verdicts are backed by arithmetic rather than self-flattery. |
+| **Power ratings, replayed over 2022–2025** | 2026-09-23: `edgelord ratings` fits a margin-based rating from nflverse final scores, walk-forward, no model calls. Tuned on 2017–2021 (optimum inside the grid), judged on 1,087 untouched games: **RMSE 12.90 vs the closing line's 12.36**, weight earned next to the line **−0.18 ± 0.12**, ATS taking its side **508-547-29, −85.2u**. It does not beat the market. 10 unit tests pin the sign convention and that no projection is fitted on its own result; full suite 253 passing. `/ratings` renders at desktop and 375px with 0 console errors. |
 | **Best bets computed, not self-rated (from 2026 Week 3)** | 2026-09-23: `conviction` is now set by `predict.computed_conviction` from the move off the line: 2+ points, 3+ while the prior season carries half the efficiency weight or continuity is under 0.7, or 1+ point that carries the number through 3 or 7. The model's own rating is kept in `model_conviction`. Weeks 1–2 are untouched. The prompt is unchanged, so the picks themselves are not affected. 16 unit tests on sign and key numbers; full suite 243 passing. Not yet run on a live slate. |
 | **Anchored projection, A/B'd on Week 1** | 2026-09-17: 16 live backtest calls, $4.11. The model is now asked for a move off the line rather than a margin from scratch. Winner agreement with the market went 69% → **100%**, mean move off the line **2.03 → 1.16**. Measured against the live pre-change picks on the same 16 games, not asserted — see "The underdog tilt" below for what it did *not* fix. Full suite 228 passing. |
 
@@ -339,3 +340,38 @@ said **nothing** about results: moves under 1 point went 4-0, 1 to 1.5 went
 3-4-1, 1.5 to 2.5 went 6-7, 2.5+ went 2-3. That is noise on 32 games in both
 directions, and it is why the computed tier is a test rather than a claim. If
 the best bets do not beat the leans over the season, the moves are not edges.
+
+## A computed rating does not beat the line either (2026-09-23)
+
+The LLM's number was measured slightly worse than the market, so the obvious
+next question was whether a plain arithmetic rating does better. It does not,
+and on a sample large enough to mean it.
+
+`edgelord/ratings.py` fits team ratings from final margins (capped, last season
+at reduced weight, pulled toward average) and projects each week only from the
+weeks before it. Settings were chosen on 2017–2021 by accuracy against the
+final margin, not by ATS record, and then left alone. On 2022–2025, 1,087
+regular-season games it had never seen:
+
+| | rating | closing line |
+|---|---|---|
+| RMSE vs final margin | 12.90 | **12.36** |
+| MAE vs final margin | 9.98 | **9.49** |
+
+Regressing the line's miss on the rating's disagreement gives a weight of
+**−0.18 (se 0.12)**: the rating carries nothing the line has not already
+priced. Betting its side every week went 508-547-29 (48.1%), and restricting
+to bigger disagreements does not help: 2+ points 47.9%, 3+ 46.6%, 4+ 49.2%.
+None clears the 52.4% break-even.
+
+One by-product answers an earlier question. The rating took the **underdog in
+67%** of games where it disagreed with the line, with no LLM anywhere in it.
+Any rating pulled toward average projects closer to a pick'em than the market
+does, and a projection closer to zero than the spread always points at the dog.
+So the dog lean on big spreads is what shrinkage looks like, not a read on
+those games, and the market being right to be more extreme is exactly why
+fading it loses.
+
+What this does not rule out is an edge from information the scores do not
+carry: better prices across books, late injury news, weather, totals. It does
+rule out "compute a better number from public results" as the source.

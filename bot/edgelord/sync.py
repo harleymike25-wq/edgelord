@@ -291,6 +291,20 @@ def push(conn, season: int, *, week: int | None = None, snapshot: bool = True) -
     if snapshot:
         out["snapshot"] = str(write_snapshot(payload))
 
+    # Computed from final scores, no model call. A failure here must not stop
+    # the picks reaching the dashboard, so it is reported rather than raised.
+    rating_doc = None
+    try:
+        from . import ratings
+
+        rating_doc = ratings.payload(season)
+        path = SNAPSHOT_DIR / f"ratings-{season}.json"
+        SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(rating_doc, indent=1), encoding="utf-8")
+        out["ratings"] = f"week {rating_doc['week']}, {path}"
+    except Exception as e:  # noqa: BLE001
+        out["ratings"] = f"failed: {e}"
+
     client = _client()
     if client is None:
         out["firestore"] = (
@@ -330,7 +344,15 @@ def push(conn, season: int, *, week: int | None = None, snapshot: bool = True) -
             "evidence": payload["evidence"],
         },
     )
+    if rating_doc is not None:
+        batch.set(
+            client.collection(META_COLLECTION).document(f"ratings-{season}"),
+            rating_doc,
+        )
     batch.commit()
 
-    out["firestore"] = f"wrote {written} game docs + record-{season}"
+    out["firestore"] = (
+        f"wrote {written} game docs + record-{season}"
+        + (f" + ratings-{season}" if rating_doc is not None else "")
+    )
     return out

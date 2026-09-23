@@ -6,6 +6,7 @@ import path from "node:path";
 import type {
   Evidence,
   Game,
+  RatingsPayload,
   RecordBlock,
   SeasonPayload,
   WeeklyPoint,
@@ -180,4 +181,31 @@ export function gamesForWeek(games: Game[], week: number): Game[] {
 
 export function findGame(games: Game[], gameId: string): Game | undefined {
   return games.find((g) => g.game_id === gameId);
+}
+
+/**
+ * Power ratings for a season, from the `ratings-<season>` meta document or the
+ * matching snapshot file. Null when sync has not written them yet -- the page
+ * says so rather than rendering an empty table.
+ */
+export async function loadRatings(season: number): Promise<RatingsPayload | null> {
+  // Firestore first; the local file covers development before the first sync
+  // has pushed a ratings document. In a deploy the file is absent, so this
+  // still returns null there rather than showing stale local numbers.
+  if (firestoreConfigured()) {
+    try {
+      const dbc = await firestore();
+      const snap = await dbc.collection("meta").doc(`ratings-${season}`).get();
+      const doc = snap.data() as RatingsPayload | undefined;
+      if (doc) return doc;
+    } catch {
+      // fall through to the snapshot
+    }
+  }
+  try {
+    const raw = await readFile(path.join(SNAPSHOT_DIR, `ratings-${season}.json`), "utf-8");
+    return JSON.parse(raw) as RatingsPayload;
+  } catch {
+    return null;
+  }
 }

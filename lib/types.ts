@@ -365,3 +365,48 @@ export interface SeasonPayload {
   /** Which backend served this payload. */
   source?: "firestore" | "snapshot";
 }
+
+/** One ATS line from the ratings replay: betting the rating's side at -110. */
+export interface RatingsAts {
+  games: number;
+  w: number;
+  l: number;
+  p: number;
+  win_pct: number | null;
+  units: number;
+  z_vs_breakeven: number | null;
+}
+
+export interface RatingsEvaluation {
+  games: number;
+  model?: { mae: number; rmse: number };
+  market?: { mae: number; rmse: number };
+  /** Weight the rating earns next to the line: 0 = adds nothing, 1 = replaces it. */
+  market_weight?: { beta: number; se: number | null };
+  mean_abs_disagreement?: number;
+  dog_share?: number | null;
+  /** Keyed by minimum disagreement with the market, e.g. "0+", "2+". */
+  ats?: Record<string, RatingsAts>;
+}
+
+/** Written by `edgelord sync` from bot/edgelord/ratings.py. No model calls. */
+export interface RatingsPayload {
+  season: number;
+  week: number;
+  generated_at: string;
+  home_field: number;
+  teams: { rank: number; team: string; rating: number; change: number | null }[];
+  /** Home margins, positive = home favoured -- the same sign as spread_line. */
+  slate: {
+    game_id: string;
+    home_team: string;
+    away_team: string;
+    projected: number | null;
+    market: number | null;
+  }[];
+  params: Record<string, number>;
+  tuned_on: [number, number];
+  test_seasons: [number, number];
+  replay: RatingsEvaluation;
+  live: RatingsEvaluation;
+}

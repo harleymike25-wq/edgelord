@@ -398,3 +398,13 @@ table.decision td.weight { text-transform: uppercase; font-size: .72rem; letter-
 .turnover-team table.roster { margin-top: .5rem; }
 table.roster th[scope="row"] { font-weight: 500; }
 .kv .source { color: var(--dim); font-size: .78rem; }
+
+/* Power ratings page */
+table.ratings { margin-bottom: .5rem; }
+table.ratings td { font-variant-numeric: tabular-nums; }
+table.ratings td.pos { color: var(--win); }
+table.ratings td.neg { color: var(--loss); }
+table.ratings td.dim { color: var(--dim); }
+table.ratings a { color: var(--text); }
+.masthead .nav-link { color: var(--muted); font-size: .85rem; margin-left: auto; }
+.masthead .nav-link:hover { color: var(--text); }

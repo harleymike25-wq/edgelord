@@ -11,6 +11,9 @@ export function Masthead({ payload }: { payload: SeasonPayload }) {
           <Link href="/">Edgelord</Link>
         </h1>
         <span className="season">{payload.season} season</span>
+        <Link href="/ratings" className="nav-link">
+          Power ratings
+        </Link>
       </div>
       <p className="generated">
         Updated {when.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}

@@ -421,6 +421,38 @@ def cmd_sync(args) -> int:
     return 0
 
 
+def cmd_ratings(args) -> int:
+    """Power ratings from final scores. No model calls, no cost."""
+    from . import ratings
+
+    season = args.season or config.current_season()
+    out = ratings.payload(season, args.week)
+    week = out["week"]
+
+    print(f"{season} week {week}   home field {out['home_field']:+.2f}\n")
+    for t in out["teams"]:
+        ch = "" if t["change"] is None else f"{t['change']:+.1f}"
+        print(f"  {t['rank']:>2}  {t['team']:<4} {t['rating']:+6.1f}  {ch}")
+    print("\n  game                model   market   (home margin, + = home favoured)")
+    for g in out["slate"]:
+        mk = "  --" if g["market"] is None else f"{g['market']:+5.1f}"
+        pr = "  --" if g["projected"] is None else f"{g['projected']:+5.1f}"
+        print(f"  {g['away_team']:>3} @ {g['home_team']:<3}           {pr}   {mk}")
+
+    for label, ev in (("replay " + "-".join(map(str, out["test_seasons"])), out["replay"]),
+                      (f"live {season}", out["live"])):
+        if not ev.get("games"):
+            continue
+        a = ev["ats"]["0+"]
+        print(
+            f"\n  {label}: {ev['games']} games   RMSE model {ev['model']['rmse']} "
+            f"vs market {ev['market']['rmse']}   weight on model "
+            f"{ev['market_weight']['beta']:+.2f} (se {ev['market_weight']['se']})   "
+            f"ATS {a['w']}-{a['l']}-{a['p']} ({a['units']:+.1f}u)"
+        )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="edgelord", description="NFL betting prediction bot")
     sub = p.add_subparsers(dest="command", required=True)
@@ -528,6 +560,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("spend", help="model spend by month and model")
     s.set_defaults(func=cmd_spend)
+
+    s = sub.add_parser(
+        "ratings", help="power ratings from final scores, with the replay verdict (no cost)"
+    )
+    s.add_argument("--season", type=int)
+    s.add_argument("--week", type=int, help="ratings as of this week (default: next week with games to play)")
+    s.set_defaults(func=cmd_ratings)
 
     s = sub.add_parser("sync", help="mirror predictions and record to Firestore")
     s.add_argument("--season", type=int)
