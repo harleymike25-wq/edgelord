@@ -84,6 +84,14 @@ export function EvidenceBadge({ e }: { e: Evidence }) {
   );
 }
 
+/** Database keys as a reader would say them. */
+const ROW_LABELS: Record<string, string> = {
+  spread: "Spreads",
+  total: "Over/unders",
+  best_bet: "Best bets",
+  lean: "Leans",
+};
+
 export function SummaryTable({
   rows,
   label,
@@ -94,7 +102,7 @@ export function SummaryTable({
   const entries = Object.entries(rows);
   if (!entries.length) return null;
   return (
-    <table>
+    <table className="ratings">
       <thead>
         <tr>
           <th>{label}</th>
@@ -107,7 +115,7 @@ export function SummaryTable({
       <tbody>
         {entries.map(([name, s]) => (
           <tr key={name}>
-            <td>{name}</td>
+            <td>{ROW_LABELS[name] ?? name}</td>
             <td>{s.record}</td>
             <td>{pct(s.win_pct)}</td>
             <td className={s.units > 0 ? "pos" : s.units < 0 ? "neg" : ""}>

@@ -50,14 +50,14 @@ export default async function RecordPage() {
           <h3 className="section">By week</h3>
           <WeeklyRecord games={payload.games} />
 
+          <h3 className="section">Spreads vs over/unders</h3>
+          <SummaryTable rows={record.by_market} label="Bet type" />
+
           <h3 className="section">By spread</h3>
           <SpreadRecord games={payload.games} />
 
-          <h3 className="section">By conviction</h3>
+          <h3 className="section">Best bets vs leans</h3>
           <SummaryTable rows={record.by_conviction ?? {}} label="Conviction" />
-
-          <h3 className="section">By market</h3>
-          <SummaryTable rows={record.by_market} label="Market" />
         </>
       )}
 
