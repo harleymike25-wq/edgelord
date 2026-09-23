@@ -7,7 +7,7 @@ and only one of those is worth anything at 11am on a Sunday.
 
 Keep it honest. Move a row up only after the thing has actually executed.
 
-Last updated: 2026-09-17
+Last updated: 2026-09-23
 
 ---
 
@@ -46,6 +46,7 @@ Last updated: 2026-09-17
 | **An unpicked week reads as unpicked** | 2026-09-17: Week 3 renders 16 cards saying "Not picked yet" on a dashed badge, under "Week 3 — 0 plays, 0 passes, 16 games". Every one previously said "No play", which is the model's word for a deliberate pass, so an unrun job looked like sixteen decisions. Full suite 206 passing. |
 | **Week 2 graded, the first anchored week** | 2026-09-23: `refresh` took 2026 to 32 final scores, `grade` wrote 48 rows. Week 2 **10-6-0, +3.09 units** against Week 1's 6-9-1, -3.55. Season 16-15-1, -0.45 units. The first total pick of the year (LV/LAC under 43.5) won. Sixteen games, so the record is not evidence — the loss arithmetic below is. |
 | **Week 2 post-mortems** | 2026-09-23: 6 losses, 6 explained, 0 failed, $0.37. Verdicts went 4 `thesis_right_variance` / 1 `bad_input` / 1 `thesis_wrong`, near-inverting Week 1's 8 `thesis_wrong` / 1 variance — and the computed misses moved with them (mean 16.3 → 9.3, median 17.5 → 8.2), so the softer verdicts are backed by arithmetic rather than self-flattery. |
+| **Best bets computed, not self-rated (from 2026 Week 3)** | 2026-09-23: `conviction` is now set by `predict.computed_conviction` from the move off the line: 2+ points, 3+ while the prior season carries half the efficiency weight or continuity is under 0.7, or 1+ point that carries the number through 3 or 7. The model's own rating is kept in `model_conviction`. Weeks 1–2 are untouched. The prompt is unchanged, so the picks themselves are not affected. 16 unit tests on sign and key numbers; full suite 243 passing. Not yet run on a live slate. |
 | **Anchored projection, A/B'd on Week 1** | 2026-09-17: 16 live backtest calls, $4.11. The model is now asked for a move off the line rather than a margin from scratch. Winner agreement with the market went 69% → **100%**, mean move off the line **2.03 → 1.16**. Measured against the live pre-change picks on the same 16 games, not asserted — see "The underdog tilt" below for what it did *not* fix. Full suite 228 passing. |
 
 ## Ran exactly once, on a model we are no longer using
@@ -310,12 +311,31 @@ What *is* evidence, because it is measured rather than won:
 
 And the number that got worse, or at least did not get better:
 
-- **CLV is bad.** Average +0.03, and only **15.6% of picks beat the closing
-  line**. On samples this small, closing line value is a better signal than
-  win-loss, and one-in-six is poor — it says the bot is generally taking a worse
-  number than the market settles on, whatever the scoreboard does. Anchoring did
-  nothing for this, and a 10-6 week should not be allowed to hide it.
+- **CLV is unmeasured, not bad.** *(Corrected 2026-09-23; this row previously
+  read "CLV is bad… only 15.6% of picks beat the closing line".)* The 15.6% is
+  5 of 32, but **24 of the 32 have CLV of exactly 0** and only 3 are negative:
+  among the eight picks where the number moved at all, 5 beat the close and 3
+  did not. The "close" is nflverse's `spread_line`, the same source as the line
+  at pick, updated sporadically; Week 1 picks were made at 11:40 on the Sunday
+  and had no time to see a move. `price_at_pick` is null on every row, so every
+  result assumes -110. Until a second line source exists, CLV here says almost
+  nothing in either direction and should not be quoted as a signal.
 
 None of this reached the prompt as a statistic. The argument in the system
 prompt is that shrinkage manufactures dog edge, which is true a priori; the
 Week 1 numbers are the test of the change, not an input to it.
+
+## Best bets move out of the model's hands (2026-09-23)
+
+The prompt already set the best-bet bar at a 2-point move (3 on thin
+evidence). The model did not apply it: Week 2 had seven picks moving the number
+2+ points and rated none of them best_bet, so every game on the card was a
+"lean" and the headline record had nothing to count. Rating a pick is
+arithmetic on numbers the model has already committed to, so it is now done in
+code; the model still picks every game.
+
+Replayed on the 32 stored live picks before the change, the move off the line
+said **nothing** about results: moves under 1 point went 4-0, 1 to 1.5 went
+3-4-1, 1.5 to 2.5 went 6-7, 2.5+ went 2-3. That is noise on 32 games in both
+directions, and it is why the computed tier is a test rather than a claim. If
+the best bets do not beat the leans over the season, the moves are not edges.

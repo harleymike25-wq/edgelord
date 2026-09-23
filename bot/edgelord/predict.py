@@ -340,6 +340,71 @@ def derived_margin(pack: dict, result: dict) -> float:
     return round(base + float(result["market_adjustment"]), 2)
 
 
+# The best-bet bar the prompt describes, applied in code. Two weeks of stored
+# picks showed the model does not hold itself to it: Week 2 had seven picks
+# moving the number 2+ points and none were rated best_bet. The prompt is left
+# alone so the picks themselves are unchanged; only the rating moves out of the
+# model's hands.
+BEST_BET_EDGE = 2.0
+# Raised while the efficiency figures are mostly last season's, or a roster has
+# largely turned over -- the same conditions the prompt names.
+BEST_BET_EDGE_THIN = 3.0
+LOW_CONTINUITY = 0.7
+# A move of at least a point that carries the number across 3 or 7 also
+# qualifies: that is where a point is worth the most.
+KEY_NUMBERS = (3.0, 7.0)
+KEY_NUMBER_MIN_EDGE = 1.0
+
+
+def _thin_evidence(pack: dict) -> bool:
+    for side in ("home", "away"):
+        block = pack.get(side) or {}
+        prov = block.get("efficiency_provenance") or {}
+        if (prov.get("prior_season_weight") or 0) >= 0.5:
+            return True
+        cont = (block.get("roster_turnover") or {}).get("overall_continuity")
+        if cont is not None and cont < LOW_CONTINUITY:
+            return True
+    return False
+
+
+def computed_conviction(pack: dict, result: dict) -> str:
+    """'best_bet' or 'lean', decided by arithmetic rather than by the model.
+
+    Edge is the move off the line toward the picked side, in points. Spread
+    picks work in the picked side's terms: the line is the market's margin for
+    that side (positive = favoured), the projection is the line plus the edge,
+    and a key number counts when the projection reaches it from a line short
+    of it -- a dog at +3.5 projected to lose by 2.5, a favourite at -2.5
+    projected to win by 3.
+    """
+    market = pack.get("market") or {}
+    if result["pick_type"] == "spread":
+        spread = market.get("current_spread_home")
+        if spread is None:
+            return "lean"
+        home = result["pick_side"] == pack["game"]["home_team"]
+        adj = float(result["market_adjustment"])
+        edge = adj if home else -adj
+        line = float(spread) if home else -float(spread)
+        proj = line + edge
+        crosses = any(
+            line < k <= proj for key in KEY_NUMBERS for k in (key, -key)
+        )
+        if crosses and edge >= KEY_NUMBER_MIN_EDGE:
+            return "best_bet"
+    elif result["pick_type"] == "total":
+        total = market.get("current_total")
+        if total is None:
+            return "lean"
+        diff = float(result["projected_total"]) - float(total)
+        edge = diff if result["pick_side"] == "over" else -diff
+    else:
+        return "lean"
+    bar = BEST_BET_EDGE_THIN if _thin_evidence(pack) else BEST_BET_EDGE
+    return "best_bet" if edge >= bar else "lean"
+
+
 def _client() -> anthropic.Anthropic:
     return anthropic.Anthropic(api_key=config.anthropic_key())
 
@@ -519,10 +584,10 @@ def store(conn, game_id: str, features_id: int | None, pack: dict, result: dict,
 
     cur = conn.execute(
         "INSERT INTO predictions (game_id, features_id, model, created_at, run_label, "
-        "pick_type, pick_side, conviction, line_at_pick, price_at_pick, confidence, "
-        "projected_margin, projected_total, headline, paragraph, key_factors, "
-        "decision_table) "
-        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "pick_type, pick_side, conviction, model_conviction, line_at_pick, "
+        "price_at_pick, confidence, projected_margin, projected_total, headline, "
+        "paragraph, key_factors, decision_table) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (
             game_id,
             features_id,
@@ -531,6 +596,7 @@ def store(conn, game_id: str, features_id: int | None, pack: dict, result: dict,
             run_label,
             result["pick_type"],
             result["pick_side"],
+            computed_conviction(pack, result),
             result.get("conviction", "lean"),
             line,
             price,

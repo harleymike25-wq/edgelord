@@ -127,6 +127,9 @@ CREATE TABLE IF NOT EXISTS predictions (
     -- How much the pick is worth acting on. Every game gets a side; only
     -- best_bet clears the edge bar. The headline record is best bets only.
     conviction       TEXT DEFAULT 'lean',
+    -- What the model called it. From 2026 Week 3 `conviction` is computed from
+    -- the move off the line instead; this keeps the model's own rating beside it.
+    model_conviction TEXT,
     line_at_pick     REAL,       -- the number actually available when we picked
     price_at_pick    INTEGER,
     confidence       INTEGER,    -- 1-100 as reported by the model
@@ -206,6 +209,7 @@ def session() -> Iterator[sqlite3.Connection]:
 # pre-existing database silently lacks them.
 _ADDED_COLUMNS: tuple[tuple[str, str, str], ...] = (
     ("predictions", "decision_table", "TEXT"),
+    ("predictions", "model_conviction", "TEXT"),
 )
 
 
