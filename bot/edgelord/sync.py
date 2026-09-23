@@ -257,11 +257,17 @@ def write_snapshot(payload: dict, *, name: str | None = None) -> Path:
 
 
 def _live_week(conn, season: int) -> int | None:
-    """The week the dashboard opens on, by the same rule as `run_task.ps1`.
+    """The week currently in play, by the same rule as `run_task.ps1`.
 
-    Mirrored even when it holds no picks, because the dashboard lands there by
-    default: an unmirrored week 404s, which reads as the season being over
-    rather than as a slate nobody has predicted yet.
+    Mirrored even when it holds no picks so that typing `/week/N` for the live
+    slate shows an honest "not picked yet" rather than a 404, which would read
+    as the season being over.
+
+    The homepage no longer depends on this. It used to open on the live week,
+    which is why the exception was added; it now opens on the newest week that
+    actually has picks, so nothing links here until a prediction run happens.
+    Kept because direct URLs and bookmarks still reach it, at a cost of at most
+    16 documents.
     """
     row = conn.execute(
         'SELECT week FROM games WHERE season = ? AND gameday >= date("now", "-2 day") '

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { Masthead, SyntheticBanner } from "@/components/Chrome";
-import { currentWeek, lastLoadError, loadSeason, predictedWeeks } from "@/lib/data";
+import { lastLoadError, loadSeason, predictedWeeks } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
@@ -9,10 +9,13 @@ export default async function Home() {
   const payload = await loadSeason();
   if (!payload) return <NoData />;
 
-  // The live week even when it has no picks yet, so an unpicked slate reads as
-  // a job that has not run rather than as the season being over. Falls back to
-  // the newest predicted week once the schedule is exhausted.
-  const week = currentWeek(payload.games) ?? predictedWeeks(payload.games)[0];
+  // The newest week that actually has picks, deliberately ignoring the
+  // calendar. Resolving the live week by date was tried first and is worse in
+  // the ordinary case: between Monday night and the next prediction run it
+  // lands on a slate with no picks, an empty record strip and sixteen "not
+  // picked yet" cards, which reads as a broken dashboard rather than as a
+  // pending job. `predictedWeeks` is newest-first, so [0] is the latest.
+  const week = predictedWeeks(payload.games)[0];
   if (week) redirect(`/week/${week}`);
 
   return (
