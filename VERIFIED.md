@@ -46,6 +46,7 @@ Last updated: 2026-09-23
 | **An unpicked week reads as unpicked** | 2026-09-17: Week 3 renders 16 cards saying "Not picked yet" on a dashed badge, under "Week 3 — 0 plays, 0 passes, 16 games". Every one previously said "No play", which is the model's word for a deliberate pass, so an unrun job looked like sixteen decisions. Full suite 206 passing. |
 | **Week 2 graded, the first anchored week** | 2026-09-23: `refresh` took 2026 to 32 final scores, `grade` wrote 48 rows. Week 2 **10-6-0, +3.09 units** against Week 1's 6-9-1, -3.55. Season 16-15-1, -0.45 units. The first total pick of the year (LV/LAC under 43.5) won. Sixteen games, so the record is not evidence — the loss arithmetic below is. |
 | **Week 2 post-mortems** | 2026-09-23: 6 losses, 6 explained, 0 failed, $0.37. Verdicts went 4 `thesis_right_variance` / 1 `bad_input` / 1 `thesis_wrong`, near-inverting Week 1's 8 `thesis_wrong` / 1 variance — and the computed misses moved with them (mean 16.3 → 9.3, median 17.5 → 8.2), so the softer verdicts are backed by arithmetic rather than self-flattery. |
+| **The luck/regression thesis, backtested** | 2026-09-23: `scripts/backtest_regression_thesis.py`, the bot's own `regression.records` definitions, 2,576 regular-season games 2016–2025 against closing lines, pre-kickoff data only. Fading the Pythagorean overachiever went **1258-1253 (50.1%)** with no threshold; no gap threshold clears 50%, let alone the 52.4% break-even. No model calls. |
 | **Power ratings, replayed over 2022–2025** | 2026-09-23: `edgelord ratings` fits a margin-based rating from nflverse final scores, walk-forward, no model calls. Tuned on 2017–2021 (optimum inside the grid), judged on 1,087 untouched games: **RMSE 12.90 vs the closing line's 12.36**, weight earned next to the line **−0.18 ± 0.12**, ATS taking its side **508-547-29, −85.2u**. It does not beat the market. 10 unit tests pin the sign convention and that no projection is fitted on its own result; full suite 253 passing. `/ratings` renders at desktop and 375px with 0 console errors. |
 | **Best bets computed, not self-rated (from 2026 Week 3)** | 2026-09-23: `conviction` is now set by `predict.computed_conviction` from the move off the line: 2+ points, 3+ while the prior season carries half the efficiency weight or continuity is under 0.7, or 1+ point that carries the number through 3 or 7. The model's own rating is kept in `model_conviction`. Weeks 1–2 are untouched. The prompt is unchanged, so the picks themselves are not affected. 16 unit tests on sign and key numbers; full suite 243 passing. Not yet run on a live slate. |
 | **Anchored projection, A/B'd on Week 1** | 2026-09-17: 16 live backtest calls, $4.11. The model is now asked for a move off the line rather than a margin from scratch. Winner agreement with the market went 69% → **100%**, mean move off the line **2.03 → 1.16**. Measured against the live pre-change picks on the same 16 games, not asserted — see "The underdog tilt" below for what it did *not* fix. Full suite 228 passing. |
@@ -375,3 +376,37 @@ fading it loses.
 What this does not rule out is an edge from information the scores do not
 carry: better prices across books, late injury news, weather, totals. It does
 rule out "compute a better number from public results" as the source.
+
+## The bot's main argument does not cover (2026-09-23)
+
+Luck/regression is the heaviest-weighted factor in the model's own decision
+tables (average 2.27 of 4) and the most one-sided: it pointed at the picked
+side 22 times to 8. "This team's record outruns its points, fade it" is the
+thesis behind most picks, including eight of Week 1's nine losses. So it was
+tested on its own, with the bot's own definitions, on every regular-season
+game from 2016 to 2025 against the closing line:
+
+| Fade the luckier side when the Pythagorean gap is at least | games | record | win % |
+|---|---|---|---|
+| any | 2,511 | 1258-1253 | 50.1% |
+| 0.10 | 1,350 | 661-689 | 49.0% |
+| 0.20 | 519 | 243-276 | 46.8% |
+| 0.30 | 163 | 78-85 | 47.9% |
+
+Fading the better one-score record is no better (49.2% overall, 45.3% at the
+widest gap), and the picture is the same in 2016–2020 and 2021–2025 separately.
+The market prices regression. A bigger gap does not make a better bet; if
+anything the fade gets slightly worse, though no row except the one below is
+more than 1.7 standard errors from a coin flip.
+
+The one row that stands out is the Week 1 situation exactly: in Weeks 1–4,
+fading on **last season's** luck at a gap of 0.20 or more went **25-47
+(34.7%, z −2.6)**, and the win rate falls steadily as the gap widens (49.5,
+47.5, 47.4, 42.9, 34.7). That is 72 games and one of about twenty rows tested,
+so it is suggestive rather than proven. But it points the same way as the Week 1
+post-mortems: leaning on last year's luck early in the season has actively
+cost money, probably because the line has already regressed those teams and
+then some.
+
+Per the no-feedback rule this is not written into the prompt as a statistic.
+Whether to weight the factor down is a design decision, like anchoring was.
