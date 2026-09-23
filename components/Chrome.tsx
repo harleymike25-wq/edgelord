@@ -2,18 +2,28 @@ import Link from "next/link";
 
 import type { SeasonPayload } from "@/lib/types";
 
+/** Neon wordmark on a black plate, with the tagline underneath. */
+export function Logo() {
+  return (
+    <Link href="/" className="logo" aria-label="Edgelord — Beat the Edge, home">
+      <h1 className="logo-word">Edgelord</h1>
+      <p className="logo-tag">Beat the Edge</p>
+    </Link>
+  );
+}
+
 export function Masthead({ payload }: { payload: SeasonPayload }) {
   const when = new Date(payload.generated_at);
   return (
     <>
       <div className="masthead">
-        <h1>
-          <Link href="/">Edgelord</Link>
-        </h1>
-        <span className="season">{payload.season} season</span>
-        <Link href="/ratings" className="nav-link">
-          Power ratings
-        </Link>
+        <Logo />
+        <div className="masthead-meta">
+          <span className="season">{payload.season} season</span>
+          <Link href="/ratings" className="nav-link">
+            Power ratings
+          </Link>
+        </div>
       </div>
       <p className="generated">
         Updated {when.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}

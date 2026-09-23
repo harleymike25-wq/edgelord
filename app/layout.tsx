@@ -1,9 +1,17 @@
 import type { Metadata } from "next";
+import { Unbounded } from "next/font/google";
 import "./globals.css";
+
+// The logo face only. Body text stays on the system stack.
+const display = Unbounded({
+  subsets: ["latin"],
+  weight: ["800"],
+  variable: "--font-display",
+});
 
 export const metadata: Metadata = {
   title: "Edgelord",
-  description: "NFL prediction tracking",
+  description: "Beat the Edge — NFL picks, tracked and graded",
 };
 
 export const viewport = {
@@ -14,7 +22,7 @@ export const viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={display.variable}>
       <body>
         <div className="shell">{children}</div>
       </body>
