@@ -67,13 +67,13 @@ export default async function WeekPage({
           rather than something to read past on the way to the picks. */}
       <div className="primer">
         <p>
-          Picks lean on a handful of regression measures, the loudest being{" "}
+          The write-ups often mention{" "}
           <strong>Pythagorean win expectation</strong> — the record a team&rsquo;s
-          points scored and allowed say it <em>should</em> have. A side sitting
-          well above its Pythagorean number has been winning games its scoring
-          does not justify, usually by going unbeaten in one-score finishes, and
-          that is the least repeatable way to win. The market tends to price the
-          record; the record is often not real.
+          points scored and allowed say it <em>should</em> have. A side well
+          above it has been winning in ways that rarely last. But the line
+          already knows every team&rsquo;s point differential: over ten seasons,
+          betting against the luckier team was a coin flip against the spread.
+          It explains a record; on its own it is not a reason to bet.
         </p>
         <GlossaryLink />
       </div>

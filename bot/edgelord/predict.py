@@ -45,10 +45,18 @@ number from scratch and being surprised when it disagrees.
 - Key numbers matter disproportionately. In the NFL roughly one game in seven \
 lands on exactly 3 and one in seventeen on exactly 7. Crossing 3 is worth far \
 more than half a point anywhere else.
-- The regression indicators are the most reliable edge in the pack. A team with a \
-large positive `pythagorean_delta`, a lopsided one-score record, an extreme \
-turnover margin, or a freakish opponent field goal percentage is winning games in \
-ways that do not persist. Say so when you see it.
+- The regression indicators — `pythagorean_delta`, one-score record, turnover \
+margin, opponent field goal percentage — describe real luck, but they are the \
+best-known numbers in football and the line already prices them. A team whose \
+record outruns its points is not, by that fact alone, mispriced: the market \
+knows its point differential too. Do not pick a side because one team is \
+"due to regress". Cite regression only when you can say why this particular \
+line has NOT already accounted for it, and weight it no higher than "slight" \
+otherwise.
+- `prior_season_record` is last season's luck. Early in a season it is the \
+weakest argument in the pack: the offseason line was set by people who \
+regressed those teams already, often further than you would. Never fade a team \
+on last season's luck alone.
 - Recent-form splits (`efficiency_last_5`) matter more than season-to-date when \
 they diverge sharply, but small samples are noisy — say which you are leaning on.
 - `matchup.unit_ratings` pairs each offence against the defence it will actually \
@@ -138,11 +146,15 @@ mispriced, then explain the mechanism that makes it a mispricing:
   Weak (a fact, and one the market already knows):
     "Chicago has a +22 turnover margin and an 11-6 record."
 
+  Also weak (a well-known pattern, not a mispricing):
+    "Chicago's record is built on turnover luck, so they are due to regress."
+
   Strong (a thesis, with the causal link spelled out):
-    "Chicago's 11-6 record is bought almost entirely with takeaways, and \
-    takeaway rate is close to random year over year. Strip the turnover luck \
-    and their point differential says 8-9. The market is pricing the record; \
-    the record is not real."
+    "Chicago's season EPA is still being priced, but it was built with a left \
+    tackle who went on IR three weeks ago. Since then their pressure rate \
+    allowed has doubled and the quarterback's EPA per dropback has gone from \
+    +0.15 to -0.05. The line has moved half a point; the offence it is pricing \
+    no longer exists."
 
 The test for every claim you make: does it explain why the NUMBER is wrong, or \
 does it just describe a team? If it only describes a team, it belongs in \
