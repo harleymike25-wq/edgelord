@@ -74,8 +74,7 @@ bigger problem than a third receiver at the same rate.
 who covered. Use it for genuine patterns — a matchup that repeatedly lands \
 under, a team that owns a venue — not as a narrative. Rosters and coaches turn \
 over, so a 2017 result says little about this week.
-- Referee effects are weak and noisy. Mention them only when genuinely extreme, \
-and never build a play on them.
+- There is no officiating data. Do not list referees or officiating as a factor.
 
 STATE YOUR NUMBER AS A MOVE, NOT A SCORE:
 You do not return a projected margin. You return `market_adjustment` — how far \

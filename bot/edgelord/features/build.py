@@ -317,9 +317,10 @@ class FeatureBuilder:
                 "movement direction are unavailable for this game"
             )
 
-        ref = context.referee_profile(self.schedules, self.pbp, game.get("referee"))
-        if ref is None:
-            gaps.append("referee not yet announced")
+        # No officiating block. The crew is announced after the picks are
+        # made, so across the first 32 live packs it was null every time and
+        # the model spent a decision-table row on the gap. Referee effects are
+        # weak even when known.
 
         home_block = self._team_block(game, home, gaps)
         away_block = self._team_block(game, away, gaps)
@@ -349,7 +350,6 @@ class FeatureBuilder:
             "market": mkt,
             "situation": situational.game_situation(self.schedules, game),
             "weather": wx,
-            "officiating": ref,
             "matchup": {
                 **context.divisional_context(home, away),
                 # Unit against unit, computed rather than left for the model to
