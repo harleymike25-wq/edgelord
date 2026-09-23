@@ -46,6 +46,7 @@ Last updated: 2026-09-23
 | **An unpicked week reads as unpicked** | 2026-09-17: Week 3 renders 16 cards saying "Not picked yet" on a dashed badge, under "Week 3 — 0 plays, 0 passes, 16 games". Every one previously said "No play", which is the model's word for a deliberate pass, so an unrun job looked like sixteen decisions. Full suite 206 passing. |
 | **Week 2 graded, the first anchored week** | 2026-09-23: `refresh` took 2026 to 32 final scores, `grade` wrote 48 rows. Week 2 **10-6-0, +3.09 units** against Week 1's 6-9-1, -3.55. Season 16-15-1, -0.45 units. The first total pick of the year (LV/LAC under 43.5) won. Sixteen games, so the record is not evidence — the loss arithmetic below is. |
 | **Week 2 post-mortems** | 2026-09-23: 6 losses, 6 explained, 0 failed, $0.37. Verdicts went 4 `thesis_right_variance` / 1 `bad_input` / 1 `thesis_wrong`, near-inverting Week 1's 8 `thesis_wrong` / 1 variance — and the computed misses moved with them (mean 16.3 → 9.3, median 17.5 → 8.2), so the softer verdicts are backed by arithmetic rather than self-flattery. |
+| **Pre-registered signal search** | 2026-09-23: `scripts/signal_search.py`, 25 rules committed (3eeac57) before any was scored. Discovery 2016–2021: 3 through the gate, about the 2.5 expected from 25 tries by chance alone. Holdout 2022–2025, looked at once: **all 3 failed**. No model calls. |
 | **Regression demoted in the prompt (from 2026 Week 3)** | 2026-09-23: the system prompt no longer calls the regression indicators "the most reliable edge in the pack". It now says the line prices them, caps them at "slight" unless the write-up can say why this line has not, and forbids fading a team on last season's luck alone. The worked example of a strong thesis was itself a turnover-luck fade and is replaced with an injury-driven one. Principle only, no statistic, per the no-feedback rule. Suite 253 passing. **Not yet run on a live slate** -- Sunday's Week 3 job is the first. |
 | **The luck/regression thesis, backtested** | 2026-09-23: `scripts/backtest_regression_thesis.py`, the bot's own `regression.records` definitions, 2,576 regular-season games 2016–2025 against closing lines, pre-kickoff data only. Fading the Pythagorean overachiever went **1258-1253 (50.1%)** with no threshold; no gap threshold clears 50%, let alone the 52.4% break-even. No model calls. |
 | **Power ratings, replayed over 2022–2025** | 2026-09-23: `edgelord ratings` fits a margin-based rating from nflverse final scores, walk-forward, no model calls. Tuned on 2017–2021 (optimum inside the grid), judged on 1,087 untouched games: **RMSE 12.90 vs the closing line's 12.36**, weight earned next to the line **−0.18 ± 0.12**, ATS taking its side **508-547-29, −85.2u**. It does not beat the market. 10 unit tests pin the sign convention and that no projection is fitted on its own result; full suite 253 passing. `/ratings` renders at desktop and 375px with 0 console errors. |
@@ -411,3 +412,38 @@ then some.
 
 Per the no-feedback rule this is not written into the prompt as a statistic.
 Whether to weight the factor down is a design decision, like anchoring was.
+
+## Nothing computable survives a holdout (2026-09-23)
+
+Asked whether the weights could be tuned until the record reached 60%: any search
+wide enough will find 60% in-sample, so the search was run the way that can be
+believed. Twenty-five rules (situational spots, rest, travel, key numbers,
+streaks, the power rating, weather and totals) were written down and committed
+before any was scored, with a fixed gate and a single look at held-out seasons.
+
+Discovery, 2016–2021 — three rules through the gate (50+ bets, at or above
+52.4%, one-sided p < 0.10):
+
+| rule | discovery | holdout 2022–2025 |
+|---|---|---|
+| back a team that lost its last game by 20+ | 129-101, 56.1% | **82-84, 49.4%** |
+| underdogs in Weeks 1–4 | 208-167, 55.5% | **130-117, 52.6%** (p 0.20) |
+| under at 32°F or below | 32-21, 60.4% | **21-26, 44.7%** |
+
+Three passes from twenty-five tries at p < 0.10 is what chance alone produces
+(about 2.5), and not one survived the Holm correction even in discovery. All
+three failed the holdout. The early-season underdog rule came nearest — 54.3%
+over the decade — but it missed its pre-set bar and cannot be claimed; it is
+also the one spot where the bot's own 2026 Week 1 dog-heavy card went 6-9-1.
+
+The temptation this file exists to resist is visible in the table: road teams
+that crossed two or more time zones covered 54.4% in discovery, which looks
+like a finding. It was registered in the other direction, and flipping it after
+seeing the result is exactly the move that produces a 60% backtest and a 50%
+season.
+
+Across this session four independent tests — the LLM's number, a computed
+rating, the regression thesis, and this search — agree: public results and
+schedule context are priced into the closing line. An edge, if there is one,
+has to come from price (a better number than the close) or from information the
+line has not yet absorbed.
