@@ -448,3 +448,14 @@ rating, the regression thesis, and this search — agree: public results and
 schedule context are priced into the closing line. An edge, if there is one,
 has to come from price (a better number than the close) or from information the
 line has not yet absorbed.
+
+**A manual predict priced a game off a week-old line (2026-09-24).**
+Run by hand as `refresh` then `predict`, the Week 3 Thursday pick (ATL/GB) was
+built on the last line snapshot, taken 9/17: GB −6.5, total 46.5. The real
+number was GB −4.5, total 42.5. `refresh` updates `games.spread_line`, but the
+market block reads `line_snapshots`, which only the scheduled jobs refresh; 31
+of 32 upcoming lines had moved in the gap. The model moved the stale 6.5 two
+points to GB −4.5, which is exactly where the market already was, so at the real
+number the pick has no edge by its own projection, and grading it at +6.5 would
+credit two points that were never available. `predict` now snapshots lines
+itself before building any pack. Dry-run confirmed the pack reads 4.5/42.5.

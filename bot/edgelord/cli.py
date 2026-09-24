@@ -216,6 +216,17 @@ def cmd_predict(args) -> int:
                 print("nothing to do: every selected game has already been played")
                 return 0
 
+        # Snapshot the current line before any pack is built. The market block
+        # reads line_snapshots, not games.spread_line, so a manual run that
+        # skipped this step priced ATL/GB off a week-old 6.5 while the real
+        # number was 4.5. Free: nflverse only, and it writes nothing when no
+        # line has moved.
+        if args.label != "backtest":
+            from .sources import nflverse
+
+            snap = nflverse.snapshot_lines(conn, [season])
+            print(f"lines: {snap.get('snapshots', 0)} moved of {snap.get('games', 0)} upcoming")
+
         builder = FeatureBuilder(sorted({season - 1, season}))
         spent = 0.0
 
