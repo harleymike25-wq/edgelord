@@ -174,6 +174,15 @@ def cmd_poll_odds(args) -> int:
     return 0
 
 
+def refresh_lines(conn, season: int) -> dict:
+    """Snapshot the current nflverse line for every unplayed game. No cost."""
+    from .sources import nflverse
+
+    snap = nflverse.snapshot_lines(conn, [season])
+    print(f"lines: {snap.get('snapshots', 0)} moved of {snap.get('games', 0)} upcoming")
+    return snap
+
+
 def cmd_predict(args) -> int:
     import json
 
@@ -183,7 +192,6 @@ def cmd_predict(args) -> int:
     db.init()
     with db.session() as conn:
         if args.game:
-            game_ids = [args.game]
             row = conn.execute(
                 "SELECT season FROM games WHERE game_id = ?", (args.game,)
             ).fetchone()
@@ -193,6 +201,19 @@ def cmd_predict(args) -> int:
             season = row["season"]
         else:
             season = args.season or config.current_season()
+
+        # FIRST, before anything reads a line: snapshot the current one. The
+        # market block reads line_snapshots, not games.spread_line, and
+        # `--only-moved` picks its games by line movement -- so both need the
+        # fresh number. A manual run that skipped this priced ATL/GB off a
+        # week-old 6.5 while the real line was 4.5. Free: nflverse only, and
+        # it writes nothing when no line has moved.
+        if args.label != "backtest":
+            refresh_lines(conn, season)
+
+        if args.game:
+            game_ids = [args.game]
+        else:
             if args.only_moved:
                 from .features.market import games_needing_repredict
 
@@ -215,17 +236,6 @@ def cmd_predict(args) -> int:
             if not game_ids:
                 print("nothing to do: every selected game has already been played")
                 return 0
-
-        # Snapshot the current line before any pack is built. The market block
-        # reads line_snapshots, not games.spread_line, so a manual run that
-        # skipped this step priced ATL/GB off a week-old 6.5 while the real
-        # number was 4.5. Free: nflverse only, and it writes nothing when no
-        # line has moved.
-        if args.label != "backtest":
-            from .sources import nflverse
-
-            snap = nflverse.snapshot_lines(conn, [season])
-            print(f"lines: {snap.get('snapshots', 0)} moved of {snap.get('games', 0)} upcoming")
 
         builder = FeatureBuilder(sorted({season - 1, season}))
         spent = 0.0
