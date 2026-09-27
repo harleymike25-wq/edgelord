@@ -33,6 +33,28 @@ export function describePick(game: Game, p: Prediction | null): string {
   return `${p.pick_side} ${signed(shown)}`;
 }
 
+/**
+ * The projection as a game result: who wins, by how much, and the score that
+ * margin and total imply.
+ *
+ * `projected_margin` is the HOME margin (positive = home wins), the opposite
+ * sign of a betting line. Printed as "PIT -3" beside the current line it read
+ * as Pittsburgh laying 3 when it meant Pittsburgh losing by 3.
+ */
+export function projectedResult(game: Game, p: Prediction): string {
+  const margin = p.projected_margin;
+  const total = p.projected_total;
+  const home = (total + margin) / 2;
+  const away = (total - margin) / 2;
+  const score =
+    home >= away
+      ? `${game.home_team} ${home.toFixed(1)}, ${game.away_team} ${away.toFixed(1)}`
+      : `${game.away_team} ${away.toFixed(1)}, ${game.home_team} ${home.toFixed(1)}`;
+  if (margin === 0) return `Pick'em · ${score}`;
+  const winner = margin > 0 ? game.home_team : game.away_team;
+  return `${winner} by ${fmt(Math.abs(margin))} · ${score}`;
+}
+
 export function signed(n: number): string {
   return `${n > 0 ? "+" : n < 0 ? "-" : "+"}${fmt(Math.abs(n))}`;
 }
