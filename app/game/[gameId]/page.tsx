@@ -10,6 +10,7 @@ import {
   clv,
   finalScore,
   kickoff,
+  projectedResult,
   signed,
   units,
 } from "@/lib/format";
@@ -75,7 +76,7 @@ export default async function GamePage({
 
               <dt>Projected</dt>
               <dd>
-                {game.home_team} {signed(p.projected_margin)} · total{" "}
+                {projectedResult(game, p)} · total{" "}
                 {p.projected_total.toFixed(1)}
               </dd>
 
