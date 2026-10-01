@@ -300,16 +300,25 @@ missed a key departure, an injury not reflected).
 - "data_gap" -- something absent from the pack decided the game, and no \
 reasoning over what was present could have caught it.
 
-`explanation` is 80-140 words, two short paragraphs. First: what actually \
-happened against what you projected. Second: whether the reasoning or the \
-variance is to blame, and on what evidence. Name specific factors from the \
-decision table. No hedging filler.
+`explanation` is 160-240 words, three short paragraphs, whatever the verdict. \
+A variance call needs as much evidence as a broken thesis, not less.
+1. The result against the projection: projected margin, actual margin, how \
+far apart in standard-error terms, and how much the pick missed covering by.
+2. A factor audit. Take the two or three heaviest rows in \
+`argued_for_pick` and say whether the result is consistent with each one or \
+cuts against it. Then name the strongest row in `argued_against_pick` and say \
+whether it looks like the thing that decided the game. Use only what you are \
+given: you have the final score and the computed miss, not the play-by-play, \
+so do not invent drives, turnovers or injuries.
+3. The verdict and the evidence for it. No hedging filler.
 
-`lesson` is one sentence, under 25 words, stating what to do differently in \
-future -- or explicitly "Nothing; the process was sound and the result was \
-variance." when that is the truth. A lesson must be transferable to other \
-games: "weight prior-season efficiency lower when continuity is under 50%" is \
-useful, "Carolina is bad" is not.\
+`lesson` is one or two sentences, under 40 words, stating what to do \
+differently in future. A lesson must be transferable to other games: "weight \
+prior-season efficiency lower when continuity is under 50%" is useful, \
+"Carolina is bad" is not. When the honest answer is that nothing should \
+change, say "No change:" and then the specific reason this game was variance \
+(e.g. "lost by one point on a projection two points from the real margin") -- \
+never a stock phrase that could be pasted onto any loss.\
 """
 
 RESPONSE_SCHEMA = {
@@ -325,15 +334,15 @@ RESPONSE_SCHEMA = {
         "explanation": {
             "type": "string",
             "description": (
-                "80-140 words in two short paragraphs: what happened against "
-                "the projection, then reasoning-or-variance with evidence."
+                "160-240 words in three short paragraphs: the result against "
+                "the projection, a factor audit, then the verdict with evidence."
             ),
         },
         "lesson": {
             "type": "string",
             "description": (
-                "One transferable sentence under 25 words, or an explicit "
-                "statement that nothing should change."
+                "One or two transferable sentences under 40 words, or 'No "
+                "change:' plus the specific reason this loss was variance."
             ),
         },
     },
