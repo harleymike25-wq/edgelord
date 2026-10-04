@@ -231,10 +231,18 @@ def depth_chart(depth: pl.DataFrame, team: str, *, top_n: int = 2) -> dict:
     out: dict[str, list[str]] = {}
     for r in rows.to_dicts():
         out.setdefault(r["pos_abb"], []).append(r["player_name"])
+    # Every quarterback, not just the top two: when QB1 is out the number-two
+    # may be hurt too, and the next man up has to come from somewhere.
+    qbs = latest.filter((pl.col("team") == team) & (pl.col("pos_abb") == "QB"))
     return {
         "as_of": str(latest["dt"].max())[:10],
         "by_position": out,
         "quarterback": (out.get("QB") or [None])[0],
+        "quarterbacks": [
+            {"name": r["player_name"], "gsis_id": r["gsis_id"], "rank": r["pos_rank"]}
+            for r in qbs.sort("pos_rank").to_dicts()
+            if r.get("gsis_id")
+        ],
     }
 
 

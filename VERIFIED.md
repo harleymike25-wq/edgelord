@@ -460,3 +460,21 @@ points to GB −4.5, which is exactly where the market already was, so at the re
 number the pick has no edge by its own projection, and grading it at +6.5 would
 credit two points that were never available. `predict` now snapshots lines
 itself before building any pack. Dry-run confirmed the pack reads 4.5/42.5.
+
+**The pack described injured quarterbacks as the starter (2026-10-04).**
+`quarterback` came from depth-chart QB1, which keeps an injured starter listed,
+and `player_form` reports whoever has thrown most. The Week 4 NYJ/CHI pack named
+Caleb Williams (Out) with only his numbers; Keenum's start and Bagent's place at
+QB2 were invisible, so the write-up assumed a backup drop-off it never measured.
+TB (Mayfield) and WAS (Jayden Daniels) had the same gap. Packs now carry
+`quarterback_situation` when QB1 is Out/Doubtful/Questionable, practised less
+than fully, or did not start the last game: the expected starter (first QB on the
+depth chart not ruled out), each candidate's own line this season and last, and
+a flag when the last game's starter disagrees with the chart. Rebuilt all Week 4
+packs with no model calls: exactly CHI, TB and WAS are flagged. Not yet run
+through a live prediction.
+
+Also tested, free, on 2017–2025 (927 games, weeks 2–8): giving the current
+season more weight early makes the EPA blend predict margins *worse*; the
+present 6-game prior (33% current at Week 4) beats 50% and 60%. Left unchanged.
+Big favourites (7+) against teams at −7/game or worse covered 141-141; no edge.

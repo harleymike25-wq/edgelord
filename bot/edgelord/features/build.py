@@ -223,10 +223,21 @@ class FeatureBuilder:
         depth = roster.depth_chart(self.depth(season), team)
         cont = self.continuity(season).get(team, {})
 
+        # The depth chart keeps an injured starter at QB1, so name the one
+        # expected to play and give his own numbers when there is any doubt.
+        qb_situation = players.quarterback_situation(
+            self.pbp, self.injuries, depth.pop("quarterbacks", []), team, season, week
+        )
+        quarterback = (
+            qb_situation["expected_starter"] if qb_situation
+            else depth.get("quarterback") or game.get(f"{side}_qb")
+        )
+
         block = {
             "team": team,
             "coach": game.get(f"{side}_coach"),
-            "quarterback": depth.get("quarterback") or game.get(f"{side}_qb"),
+            "quarterback": quarterback,
+            "quarterback_situation": qb_situation,
             "division": stadiums.DIVISIONS.get(team),
             "efficiency_season": _split_sides(season_eff) if season_eff else None,
             f"efficiency_last_{RECENT_WEEKS}": _split_sides(recent_eff) if recent_eff else None,

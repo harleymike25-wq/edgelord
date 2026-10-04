@@ -124,3 +124,78 @@ class TestProfile:
         rows = [_dropback(w, "QB", 0.1) for w in range(1, 11)] * 4
         out = players.profile(_pbp(rows), "ZZZ", 2025, 11)
         assert out == {}
+
+
+class TestQuarterbackSituation:
+    """The depth chart keeps an injured QB1 listed; the pack must not."""
+
+    DEPTH = [
+        {"name": "Starter", "gsis_id": "id_Starter", "rank": 1},
+        {"name": "Backup", "gsis_id": "id_Backup", "rank": 2},
+        {"name": "Third", "gsis_id": "id_Third", "rank": 3},
+    ]
+
+    def _injuries(self, rows):
+        return pl.DataFrame(
+            rows,
+            schema=["season", "week", "team", "gsis_id", "position",
+                    "report_status", "practice_status"],
+            orient="row",
+        )
+
+    def _situation(self, pbp_rows, injury_rows):
+        return players.quarterback_situation(
+            _pbp(pbp_rows), self._injuries(injury_rows), self.DEPTH, "AAA", 2025, 5
+        )
+
+    def test_ordinary_week_adds_nothing(self):
+        rows = [_dropback(w, "Starter", 0.1) for w in range(1, 5)] * 30
+        assert self._situation(rows, []) is None
+
+    def test_out_starter_hands_over_to_the_next_healthy_quarterback(self):
+        rows = [_dropback(w, "Starter", 0.2) for w in range(1, 5)] * 30
+        rows += [_dropback(2, "Backup", -0.3)] * 9
+        out = self._situation(rows, [(2025, 5, "AAA", "id_Starter", "QB", "Out", None)])
+        assert out["expected_starter"] == "Backup"
+        backup = next(c for c in out["candidates"] if c["player"] == "Backup")
+        # His own numbers, however few, not the injured starter's.
+        assert backup["form_this_season"]["dropbacks"] == 9
+        assert backup["form_this_season"]["epa_per_dropback"] == pytest.approx(-0.3)
+        assert "stale" not in out["basis"]
+
+    def test_skips_a_backup_who_is_also_out(self):
+        rows = [_dropback(w, "Starter", 0.2) for w in range(1, 5)] * 30
+        out = self._situation(rows, [
+            (2025, 5, "AAA", "id_Starter", "QB", "Out", None),
+            (2025, 5, "AAA", "id_Backup", "QB", "Doubtful", None),
+        ])
+        assert out["expected_starter"] == "Third"
+
+    def test_practice_status_alone_is_uncertain_not_out(self):
+        rows = [_dropback(w, "Starter", 0.2) for w in range(1, 5)] * 30
+        out = self._situation(
+            rows, [(2025, 5, "AAA", "id_Starter", "QB", None, "Did Not Participate")]
+        )
+        assert out["expected_starter"] == "Starter"
+        assert "uncertain" in out["basis"]
+
+    def test_flags_a_depth_chart_that_disagrees_with_the_last_start(self):
+        rows = [_dropback(w, "Starter", 0.2) for w in range(1, 4)] * 30
+        rows += [_dropback(4, "Third", 0.2)] * 34
+        out = self._situation(rows, [(2025, 5, "AAA", "id_Starter", "QB", "Out", None)])
+        assert out["expected_starter"] == "Backup"
+        assert "stale" in out["basis"]
+        third = next(c for c in out["candidates"] if c["player"] == "Third")
+        assert third["started_last_game"] is True
+
+    def test_full_practice_with_no_game_status_is_not_doubt(self):
+        rows = [_dropback(w, "Starter", 0.1) for w in range(1, 5)] * 30
+        injury = [(2025, 5, "AAA", "id_Starter", "QB", None, "Full Participation in Practice")]
+        assert self._situation(rows, injury) is None
+
+    def test_questionable_starter_is_uncertain(self):
+        rows = [_dropback(w, "Starter", 0.1) for w in range(1, 5)] * 30
+        injury = [(2025, 5, "AAA", "id_Starter", "QB", "Questionable", "Limited")]
+        out = self._situation(rows, injury)
+        assert out["expected_starter"] == "Starter"
+        assert "Questionable" in out["basis"]

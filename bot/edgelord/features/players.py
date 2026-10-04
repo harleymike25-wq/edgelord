@@ -77,6 +77,148 @@ def quarterback(pbp: pl.DataFrame, team: str, season: int, through_week: int,
     }
 
 
+def passer_line(pbp: pl.DataFrame, player_id: str, season: int,
+                through_week: int) -> dict | None:
+    """One named passer's line, with no usage floor.
+
+    `quarterback` reports whoever has thrown the most, which is the starter the
+    team has had, not necessarily the one it will play. A backup with 34
+    dropbacks still has to be described by his own numbers, so the sample size
+    is reported instead of filtered on.
+    """
+    df = _scoped(pbp, season, through_week).filter(
+        (pl.col("passer_player_id") == player_id) & (pl.col("qb_dropback") == 1)
+    )
+    if df.is_empty():
+        return None
+    return {
+        "season": season,
+        "games": df["game_id"].n_unique(),
+        "dropbacks": df.height,
+        "epa_per_dropback": round(df["epa"].mean(), 3),
+        "success_rate": round(df["success"].mean(), 3),
+        "sack_rate": round((df["sack"] == 1).mean(), 3),
+        "interceptions": int((df["interception"] == 1).sum()),
+    }
+
+
+def last_game_passer(pbp: pl.DataFrame, team: str, season: int,
+                     through_week: int) -> tuple[str, str] | None:
+    """(player_id, name) of whoever took most dropbacks in the team's last game."""
+    df = _scoped(pbp, season, through_week).filter(
+        (pl.col("posteam") == team)
+        & (pl.col("qb_dropback") == 1)
+        & pl.col("passer_player_id").is_not_null()
+    )
+    if df.is_empty():
+        return None
+    df = df.filter(pl.col("week") == df["week"].max())
+    top = (
+        df.group_by("passer_player_id", "passer_player_name")
+        .agg(pl.len().alias("n"))
+        .sort("n", descending=True)
+        .row(0)
+    )
+    return top[0], top[1]
+
+
+# Game statuses that mean the player is not expected to play. Practice statuses
+# alone ("Did Not Participate") are not a game status -- the Friday designation
+# can lag in nflverse, so those leave the starter uncertain rather than out.
+UNAVAILABLE = ("Out", "Doubtful")
+
+
+def quarterback_situation(pbp: pl.DataFrame, injuries: pl.DataFrame,
+                          depth_qbs: list[dict], team: str, season: int,
+                          week: int) -> dict | None:
+    """Who is expected to play quarterback, and how sure that is.
+
+    The depth chart's QB1 stays listed while injured, and `player_form` only
+    knows who has thrown the most. Together they described an injured starter as
+    the quarterback and gave no numbers for the one actually playing. This names
+    the expected starter -- the first quarterback on the depth chart not ruled
+    out -- and, whenever there is any doubt, gives each candidate's own line.
+
+    Returns None when the listed starter has no designation and also started
+    the last game, which is the ordinary week and needs no extra block.
+    """
+    if not depth_qbs:
+        return None
+
+    status: dict[str, dict] = {}
+    if not injuries.is_empty():
+        rows = injuries.filter(
+            (pl.col("season") == season) & (pl.col("week") == week)
+            & (pl.col("team") == team) & (pl.col("position") == "QB")
+        )
+        for r in rows.to_dicts():
+            status[r["gsis_id"]] = {
+                "game_status": r.get("report_status"),
+                "practice": r.get("practice_status"),
+            }
+
+    listed = depth_qbs[0]
+    listed_status = status.get(listed["gsis_id"], {})
+    expected = next(
+        (q for q in depth_qbs
+         if status.get(q["gsis_id"], {}).get("game_status") not in UNAVAILABLE),
+        listed,
+    )
+    last = last_game_passer(pbp, team, season, week)
+
+    # A full practice with no game status is a maintenance listing, not doubt.
+    listed_clean = not listed_status.get("game_status") and (
+        (listed_status.get("practice") or "").startswith("Full") or not listed_status
+    )
+    if listed_clean and (last is None or last[0] == listed["gsis_id"]):
+        return None
+
+    if expected is not listed:
+        basis = (
+            f"{listed['name']} is {listed_status.get('game_status')}; "
+            f"{expected['name']} is next on the depth chart"
+        )
+    elif listed_status.get("game_status"):
+        basis = (
+            f"{listed['name']} is {listed_status['game_status']} -- "
+            "treat the start as uncertain"
+        )
+    elif not listed_clean:
+        basis = (
+            f"{listed['name']} has no game status yet but practice reads "
+            f"'{listed_status.get('practice')}' -- treat the start as uncertain"
+        )
+    else:
+        basis = f"{listed['name']} is listed QB1 but did not start the last game"
+    last_out = bool(last) and status.get(last[0], {}).get("game_status") in UNAVAILABLE
+    if last and last[0] != expected["gsis_id"] and not last_out:
+        basis +=f"; {last[1]} started the last game, so the depth chart may be stale"
+
+    seen: set[str] = set()
+    candidates = []
+    for q in [listed, expected, *depth_qbs[1:]]:
+        if q["gsis_id"] in seen:
+            continue
+        seen.add(q["gsis_id"])
+        st = status.get(q["gsis_id"], {})
+        candidates.append({
+            "player": q["name"],
+            "depth_rank": q["rank"],
+            "game_status": st.get("game_status"),
+            "practice": st.get("practice"),
+            "started_last_game": bool(last and last[0] == q["gsis_id"]),
+            "form_this_season": passer_line(pbp, q["gsis_id"], season, week),
+            "form_last_season": passer_line(pbp, q["gsis_id"], season - 1, 99),
+        })
+
+    return {
+        "listed_starter": listed["name"],
+        "expected_starter": expected["name"],
+        "basis": basis,
+        "candidates": candidates,
+    }
+
+
 def _skill(df: pl.DataFrame, id_col: str, name_col: str, min_uses: int,
            use_label: str) -> list[dict]:
     rows = (

@@ -68,6 +68,10 @@ offence; pressure is the exception and is stated from the defence's side. \
 - `player_form` is where team efficiency hides things. A team can carry a good \
 season EPA while its quarterback has collapsed over the last month — compare \
 `quarterback_season` against `quarterback_last_5` and say so when they diverge. \
+Those describe whoever has thrown the most, not who plays this week. When a \
+team has `quarterback_situation`, its listed starter is hurt or did not start \
+last time: judge the quarterback by the expected starter's own line in \
+`candidates`, weigh its sample size, and say if the starter is still uncertain. \
 Usage matters as much as efficiency: a back with 160 carries at -0.08 EPA is a \
 bigger problem than a third receiver at the same rate.
 - `head_to_head` now reaches back roughly ten seasons with scores, lines and \
