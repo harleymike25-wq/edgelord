@@ -92,7 +92,62 @@ def _factor_split(decision_table: list[dict], pick_side: str) -> dict:
     }
 
 
-def compute_miss(row: dict) -> dict:
+UNAVAILABLE = ("Out", "Doubtful")
+
+
+def status_changes(pack: dict, final: list[dict]) -> list[dict]:
+    """Starters whose availability changed between the pick and kickoff.
+
+    The pack holds the injury report as it stood when the pick was made; the
+    final report can say something different by game day. Without this the
+    review saw only the pick and the score, so a pick that named "if Daniels is
+    ruled out the pick dies", lost after Daniels was ruled out, and was never
+    re-run came back as variance.
+
+    `final` is that week's nflverse injury rows for both teams. Only players
+    who matter are kept: anyone flagged a starter at pick time, and any
+    quarterback. A player newly ruled out who was not on the report at all has
+    no usage figure in the pack, so only quarterbacks are reported from that
+    group rather than guessing at who else started.
+    """
+    final_by = {
+        (r.get("team"), r.get("full_name")): r.get("report_status") for r in final
+    }
+    changes: list[dict] = []
+    seen: set[tuple] = set()
+
+    for side in ("home", "away"):
+        block = pack.get(side) or {}
+        team = block.get("team")
+        for inj in block.get("injuries") or []:
+            key = (team, inj.get("player"))
+            seen.add(key)
+            if not (inj.get("starter") or inj.get("position") == "QB"):
+                continue
+            before = inj.get("status")
+            after = final_by.get(key)
+            was_out, now_out = before in UNAVAILABLE, after in UNAVAILABLE
+            if was_out != now_out:
+                changes.append({
+                    "team": team, "player": inj.get("player"),
+                    "position": inj.get("position"),
+                    "status_at_pick": before, "final_status": after,
+                })
+
+    teams = {(pack.get(s) or {}).get("team") for s in ("home", "away")}
+    for r in final:
+        key = (r.get("team"), r.get("full_name"))
+        if (key in seen or r.get("team") not in teams or r.get("position") != "QB"
+                or r.get("report_status") not in UNAVAILABLE):
+            continue
+        changes.append({
+            "team": r.get("team"), "player": r.get("full_name"), "position": "QB",
+            "status_at_pick": None, "final_status": r.get("report_status"),
+        })
+    return changes
+
+
+def compute_miss(row: dict, final_injuries: list[dict] | None = None) -> dict:
     """Everything about a loss that can be derived rather than asserted.
 
     `row` is a prediction joined to its result and its game. Sign convention
@@ -194,6 +249,17 @@ def compute_miss(row: dict) -> dict:
     except (ValueError, TypeError):
         miss["key_factors"] = []
 
+    # None means the comparison could not be made, which is not the same as an
+    # empty list saying nothing changed.
+    try:
+        pack = json.loads(row.get("pack") or "null")
+    except (ValueError, TypeError):
+        pack = None
+    miss["changed_after_pick"] = (
+        None if pack is None or final_injuries is None
+        else status_changes(pack, final_injuries)
+    )
+
     return miss
 
 
@@ -204,7 +270,7 @@ LOSS_SQL = """
            g.season, g.week, g.home_team, g.away_team, g.spread_line,
            g.total_line, g.gameday,
            r.home_score, r.away_score, r.clv_points, r.profit_units,
-           f.data_gaps,
+           f.data_gaps, f.payload AS pack,
            pm.prediction_id AS existing
     FROM results r
     JOIN predictions p ON p.id = r.prediction_id
@@ -280,6 +346,17 @@ side was favoured -- `line` is stated as "the side we picked is favoured by \
 this many points", so a POSITIVE line means the pick was LAYING those points, \
 not receiving them. Describing a positive line as "plus the points" or as \
 getting push protection is a sign error, and it is the error to report.
+
+A SECOND EXCEPTION. `changed_after_pick` lists starters whose availability \
+changed between when the pick was made and kickoff. If one of them is a \
+quarterback, or a player the write-up named as a condition ("if X is ruled out \
+the pick dies"), the pick was made on information that was no longer true when \
+the game was played. That is "bad_input", not "thesis_right_variance", even \
+when the projection error looks like ordinary noise -- the thesis was never \
+tested against the game that was actually played. Say which change it was and \
+that the pick should have been re-run. A change to a minor player, or one the \
+write-up already assumed, does not trigger this. An empty list means nothing \
+changed; null means the comparison was unavailable.
 
 `factors.argued_for_pick` lists the rows of your own decision table that \
 pointed at the side that lost -- those are the candidates for having been \
@@ -469,6 +546,23 @@ def load(conn, season: int, *, week: int | None = None) -> dict[int, dict]:
     return out
 
 
+def _final_injuries(seasons: set[int]) -> dict[tuple, list[dict]] | None:
+    """The last injury report for each (season, week), or None if unavailable."""
+    if not seasons:
+        return {}
+    try:
+        from .sources import nflverse
+        df = nflverse.injuries(sorted(seasons))
+    except Exception:  # noqa: BLE001 -- a missing report must not stop the review
+        return None
+    out: dict[tuple, list[dict]] = {}
+    for r in df.select(
+        "season", "week", "team", "full_name", "position", "report_status"
+    ).to_dicts():
+        out.setdefault((r["season"], r["week"]), []).append(r)
+    return out
+
+
 def generate(conn, *, season: int | None = None, week: int | None = None,
              regenerate: bool = False, with_model: bool = True,
              budget: float | None = None, limit: int | None = None,
@@ -489,8 +583,13 @@ def generate(conn, *, season: int | None = None, week: int | None = None,
     out = {"losses": len(rows), "computed": 0, "explained": 0,
            "failed": 0, "cost_usd": 0.0, "errors": []}
 
+    injuries = _final_injuries({r["season"] for r in rows})
+
     for row in rows:
-        miss = compute_miss(row)
+        final = None
+        if injuries is not None:
+            final = injuries.get((row["season"], row["week"]), [])
+        miss = compute_miss(row, final)
         narrative = None
 
         if with_model:

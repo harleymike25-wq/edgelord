@@ -305,3 +305,52 @@ class TestLosingPicks:
         _prediction(conn, run_label="backtest", side=AWAY, line=-2.5)
         track.grade(conn)
         assert postmortem.losing_picks(conn, season=2026) == []
+
+
+class TestStatusChanges:
+    """A pick made before its quarterback was ruled out is not variance."""
+
+    PACK = {
+        "home": {"team": "WAS", "injuries": [
+            {"player": "Jayden Daniels", "position": "QB", "status": "Limited Participation in Practice", "starter": True},
+            {"player": "Backup Safety", "position": "S", "status": "Questionable", "starter": False},
+        ]},
+        "away": {"team": "IND", "injuries": [
+            {"player": "Starting Guard", "position": "G", "status": "Out", "starter": True},
+        ]},
+    }
+
+    def _final(self, *rows):
+        return [{"team": t, "full_name": n, "position": p, "report_status": s} for t, n, p, s in rows]
+
+    def test_starter_ruled_out_after_the_pick_is_reported(self):
+        out = postmortem.status_changes(self.PACK, self._final(
+            ("WAS", "Jayden Daniels", "QB", "Out"),
+            ("IND", "Starting Guard", "G", "Out"),
+        ))
+        assert out == [{
+            "team": "WAS", "player": "Jayden Daniels", "position": "QB",
+            "status_at_pick": "Limited Participation in Practice", "final_status": "Out",
+        }]
+
+    def test_non_starters_are_ignored(self):
+        out = postmortem.status_changes(self.PACK, self._final(
+            ("WAS", "Backup Safety", "S", "Out"),
+            ("IND", "Starting Guard", "G", "Out"),
+        ))
+        assert out == []
+
+    def test_a_starter_cleared_to_play_is_a_change_too(self):
+        out = postmortem.status_changes(self.PACK, self._final(("IND", "Starting Guard", "G", None)))
+        assert [c["player"] for c in out] == ["Starting Guard"]
+
+    def test_quarterback_newly_on_the_report_is_caught(self):
+        out = postmortem.status_changes(self.PACK, self._final(
+            ("IND", "Starting Guard", "G", "Out"),
+            ("IND", "New Qb", "QB", "Doubtful"),
+            ("IND", "New Corner", "CB", "Out"),
+        ))
+        assert [c["player"] for c in out] == ["New Qb"]
+
+    def test_missing_pack_means_unknown_not_unchanged(self):
+        assert postmortem.compute_miss(_row(), [])["changed_after_pick"] is None
