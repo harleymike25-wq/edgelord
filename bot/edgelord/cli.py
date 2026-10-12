@@ -183,6 +183,94 @@ def refresh_lines(conn, season: int) -> dict:
     return snap
 
 
+def predict_one(conn, builder, game_id: str, *, effort=None, label="manual",
+                verbose=False, pack: dict | None = None) -> dict | None:
+    """Build, predict, store and print one game. None when the call failed.
+
+    BudgetExceeded propagates so a caller can stop the whole run.
+    """
+    from . import predict as predictor
+
+    pack = pack or builder.build(conn, game_id)
+    features_id = builder.store(conn, game_id, pack)
+    try:
+        result = predictor.predict(pack, conn, effort=effort, run_label=label)
+    except predictor.BudgetExceeded:
+        raise
+    except Exception as e:
+        print(f"{game_id}: FAILED {e}", file=sys.stderr)
+        return None
+
+    pid = predictor.store(conn, game_id, features_id, pack, result, run_label=label)
+    # A fresh pick answers whatever flagged the old one, however it was run.
+    conn.execute("DELETE FROM recheck_flags WHERE game_id = ?", (game_id,))
+    # Commit per game rather than per slate. A sixteen-game run takes minutes,
+    # and holding the write lock for all of it would block the line poller that
+    # fires on its own schedule.
+    conn.commit()
+    print(
+        f"{game_id:<20} {result['pick_type']:<7} {result['pick_side']:<6} "
+        f"conf {result['confidence']:>3}  "
+        f"proj {result['projected_margin']:+.1f}/{result['projected_total']:.1f}  "
+        f"[#{pid}]"
+    )
+    if verbose:
+        print(f"  {result['paragraph']}\n")
+    return result
+
+
+def cmd_recheck(args) -> int:
+    from . import predict as predictor
+    from . import recheck
+    from .features.build import FeatureBuilder
+
+    db.init()
+    season = args.season or config.current_season()
+    cap = config.RECHECK_WEEKLY_USD if args.cap is None else args.cap
+    with db.session() as conn:
+        refresh_lines(conn, season)
+        builder = FeatureBuilder(sorted({season - 1, season}))
+        flagged = recheck.detect(conn, builder, season, args.week)
+        recheck.store_flags(conn, season, args.week, flagged)
+        conn.commit()
+
+        if not flagged:
+            print("no changes: every unplayed pick still matches its inputs")
+            return 0
+        for f in flagged:
+            print(f"{f['game_id']}")
+            for r in f["reasons"]:
+                print(f"   - {r}")
+
+        if not args.run:
+            print(f"\n{len(flagged)} flagged; not rerun (no --run)")
+            return 0
+
+        est = recheck.call_estimate(conn)
+        spent = recheck.week_spend(conn, season, args.week)
+        if args.allow is not None:
+            cap = spent + args.allow
+        print(f"\nweek {args.week} recheck spend ${spent:.2f} of ${cap:.2f} cap, ~${est:.2f}/call")
+        for f in flagged:
+            if spent + est > cap:
+                print(f"{f['game_id']}: left flagged, cap reached")
+                continue
+            try:
+                result = predict_one(
+                    conn, builder, f["game_id"], label="recheck", pack=f["pack"]
+                )
+            except predictor.BudgetExceeded as e:
+                print(f"stopping: {e}", file=sys.stderr)
+                break
+            spent = recheck.week_spend(conn, season, args.week)
+        left = conn.execute(
+            "SELECT COUNT(*) FROM recheck_flags f JOIN games g ON g.game_id = f.game_id "
+            "WHERE g.season = ? AND g.week = ?", (season, args.week),
+        ).fetchone()[0]
+        print(f"week {args.week} recheck spend now ${spent:.2f}; {left} still flagged")
+    return 0
+
+
 def cmd_predict(args) -> int:
     import json
 
@@ -241,42 +329,20 @@ def cmd_predict(args) -> int:
         spent = 0.0
 
         for game_id in game_ids:
-            pack = builder.build(conn, game_id)
-
             if args.dry_run:
                 print(f"===== {game_id} =====")
-                print(predictor.build_prompt(pack))
+                print(predictor.build_prompt(builder.build(conn, game_id)))
                 continue
-
-            features_id = builder.store(conn, game_id, pack)
             try:
-                result = predictor.predict(
-                    pack, conn, effort=args.effort, run_label=args.label
+                result = predict_one(
+                    conn, builder, game_id, effort=args.effort, label=args.label,
+                    verbose=args.verbose,
                 )
             except predictor.BudgetExceeded as e:
                 print(f"stopping: {e}", file=sys.stderr)
                 break
-            except Exception as e:
-                print(f"{game_id}: FAILED {e}", file=sys.stderr)
-                continue
-
-            spent += result.get("_cost_usd", 0.0)
-            pid = predictor.store(
-                conn, game_id, features_id, pack, result, run_label=args.label
-            )
-            # Commit per game rather than per slate. A sixteen-game run takes
-            # minutes, and holding the write lock for all of it would block the
-            # line poller that fires on its own schedule.
-            conn.commit()
-            side = result["pick_side"]
-            print(
-                f"{game_id:<20} {result['pick_type']:<7} {side:<6} "
-                f"conf {result['confidence']:>3}  "
-                f"proj {result['projected_margin']:+.1f}/{result['projected_total']:.1f}  "
-                f"[#{pid}]"
-            )
-            if args.verbose:
-                print(f"  {result['paragraph']}\n")
+            if result:
+                spent += result.get("_cost_usd", 0.0)
 
         if not args.dry_run:
             mtd = predictor.month_spend(conn)
@@ -523,6 +589,26 @@ def build_parser() -> argparse.ArgumentParser:
     )
     s.add_argument("--season", type=int)
     s.set_defaults(func=cmd_snapshot_lines)
+
+    s = sub.add_parser(
+        "recheck",
+        help="flag live picks whose line or key injuries changed; rerun them within a weekly cap",
+    )
+    s.add_argument("--season", type=int)
+    s.add_argument("--week", type=int, required=True)
+    s.add_argument(
+        "--run", action="store_true",
+        help="re-predict flagged games while this week's recheck spend stays under the cap",
+    )
+    s.add_argument(
+        "--cap", type=float,
+        help=f"weekly USD cap for --run (default EDGELORD_RECHECK_WEEKLY_USD, now {config.RECHECK_WEEKLY_USD:g})",
+    )
+    s.add_argument(
+        "--allow", type=float,
+        help="USD this run may spend on top of the week's recheck spend so far (a manual, confirmed run)",
+    )
+    s.set_defaults(func=cmd_recheck)
 
     s = sub.add_parser("predict", help="run the model over one game or a whole slate")
     g = s.add_mutually_exclusive_group(required=True)

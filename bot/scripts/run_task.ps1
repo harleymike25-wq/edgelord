@@ -10,7 +10,7 @@
 #>
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('poll', 'sunday', 'midweek', 'grade')]
+    [ValidateSet('poll', 'recheck', 'grade')]
     [string]$Job,
 
     [int]$Week,
@@ -56,8 +56,8 @@ db.init()
 season = config.current_season()
 with db.session() as conn:
     row = conn.execute(
-        'SELECT season, week FROM games WHERE gameday >= date(\"now\", \"-2 day\") '
-        'ORDER BY gameday, gametime LIMIT 1'
+        'SELECT season, week FROM games WHERE home_score IS NULL '
+        'AND gameday >= date(\"now\", \"-1 day\") ORDER BY gameday, gametime LIMIT 1'
     ).fetchone()
 print(f'{row[\"season\"]} {row[\"week\"]}' if row else f'{season} 1')
 "@
@@ -70,32 +70,24 @@ switch ($Job) {
     'poll' {
         Invoke-Edgelord @('poll-odds') | Out-Null
     }
-    'sunday' {
+    'recheck' {
+        # One job for the whole week, fired after each injury report and each
+        # wave of inactives. It picks games that have no pick yet and reruns
+        # picks whose line or key injuries changed -- but only within
+        # EDGELORD_RECHECK_WEEKLY_USD. At the default of 0 it calls no model at
+        # all: changed picks are flagged on the site and in this log instead.
+        #
+        # This replaced a Sunday 10:00 full-slate re-predict (before any
+        # inactives, and paying for every game whether or not anything changed)
+        # and a midweek pass that watched lines but not injuries.
+        #
         # `refresh` must precede `grade`: it is the only thing that writes final
         # scores into the games table, and grade skips any game whose score is
-        # still null. Without it nothing is ever scored and the record stays
-        # 0-0 all season while predictions pile up.
+        # still null.
         Invoke-Edgelord @('refresh') | Out-Null
         if (-not $Week) { $s, $w = Get-CurrentWeek } else { $s, $w = $Season, $Week }
-        Write-Log "building slate for $s week $w"
-        Invoke-Edgelord @('poll-odds') | Out-Null
         Invoke-Edgelord @('grade') | Out-Null
-        Invoke-Edgelord @('predict', '--season', $s, '--week', $w, '--label', 'sunday') | Out-Null
-        Invoke-Edgelord @('report', '--season', $s, '--week', $w) | Out-Null
-        Invoke-Edgelord @('sync', '--season', $s) | Out-Null
-        Write-Log "report ready at reports\${s}_week$('{0:d2}' -f [int]$w).html"
-    }
-    'midweek' {
-        # Wednesday, Thursday and Monday: refresh, re-poll, re-predict movers.
-        Invoke-Edgelord @('refresh') | Out-Null
-        if (-not $Week) { $s, $w = Get-CurrentWeek } else { $s, $w = $Season, $Week }
-        $label = if ($Label) { $Label } else { (Get-Date).DayOfWeek.ToString().ToLower() }
-        Invoke-Edgelord @('poll-odds') | Out-Null
-        Invoke-Edgelord @('grade') | Out-Null
-        # Only re-predict games whose number crossed a key value since Sunday.
-        # Re-running the full slate on all three weekly jobs triples the model
-        # bill for almost no change in the picks.
-        Invoke-Edgelord @('predict', '--season', $s, '--week', $w, '--label', $label, '--only-moved') | Out-Null
+        Invoke-Edgelord @('recheck', '--season', $s, '--week', $w, '--run') | Out-Null
         Invoke-Edgelord @('report', '--season', $s, '--week', $w) | Out-Null
         Invoke-Edgelord @('sync', '--season', $s) | Out-Null
     }

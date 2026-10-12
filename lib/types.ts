@@ -117,6 +117,8 @@ export interface Game {
   factors?: Factors | null;
   /** Present only on losses: what went wrong and whether it was reasoning or variance. */
   post_mortem?: PostMortem | null;
+  /** The pick's inputs changed after it was made and it has not been rerun. */
+  recheck?: { checked_at: string; reasons: string[] } | null;
 }
 
 export type MissVerdict =

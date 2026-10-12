@@ -3,16 +3,17 @@
   Register (or re-register) the Edgelord scheduled tasks for the current user.
 
 .DESCRIPTION
-  Registers four tasks under the \Edgelord\ folder. No elevation is required --
-  these run as the current user, only when logged on.
+  Registers three tasks under the \Edgelord\ folder. No elevation is required.
 
-    Edgelord\PollOdds   every 6 hours          snapshot lines (builds open->close)
-    Edgelord\Sunday     Sundays 10:00          full slate: poll, grade, predict, report
-    Edgelord\Midweek    Thu + Mon 18:00        re-poll and re-predict
+    Edgelord\PollLines  every 6 hours          snapshot lines (builds open->close)
+    Edgelord\Recheck    after each injury report and wave of inactives (below):
+                        pick unpicked games, flag or rerun picks whose line or
+                        key injuries changed -- model spend capped per week by
+                        EDGELORD_RECHECK_WEEKLY_USD (default 0: flag only)
     Edgelord\Grade      Tuesdays 09:00         grade the completed week
 
-  The Sunday job runs at 10:00 rather than 11:00 so a sixteen-game slate has
-  time to finish before you want to read it.
+  Registering also removes tasks left under the old names (Sunday, Midweek),
+  which ran jobs the runner no longer accepts.
 
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File scripts\register_tasks.ps1
@@ -27,10 +28,19 @@ $folder = '\Edgelord\'
 
 $tasks = @(
     @{ Name = 'PollLines'; Job = 'poll' },
-    @{ Name = 'Sunday';    Job = 'sunday' },
-    @{ Name = 'Midweek';   Job = 'midweek' },
+    @{ Name = 'Recheck';   Job = 'recheck' },
     @{ Name = 'Grade';     Job = 'grade' }
 )
+
+# The pre-recheck task names. Always removed, so an old registration cannot keep
+# firing 'sunday' or 'midweek', which run_task.ps1 now rejects.
+$retired = @('Sunday', 'Midweek')
+foreach ($name in $retired) {
+    if (Get-ScheduledTask -TaskName $name -TaskPath $folder -ErrorAction SilentlyContinue) {
+        Unregister-ScheduledTask -TaskName $name -TaskPath $folder -Confirm:$false
+        Write-Output "removed retired $folder$name"
+    }
+}
 
 if ($Unregister) {
     foreach ($t in $tasks) {
@@ -78,19 +88,25 @@ $triggers = @{
         $t
     )
 
-    # The main slate build. 10:00 so a sixteen-game run is finished well before
-    # the 13:00 ET kickoffs.
-    Sunday   = @(New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At '10:00')
-
-    # Wednesday and Thursday cover standalone games that kick off before the
-    # Sunday job would ever see them. The 2026 season opens on a WEDNESDAY
-    # (Sept 9, NE at SEA) with the Melbourne game the following night -- on a
-    # Thursday/Sunday/Monday schedule alone, the opener would first be predicted
-    # after it had already been played.
-    Midweek  = @(
-        New-ScheduledTaskTrigger -Weekly -DaysOfWeek Wednesday -At '11:00'
-        New-ScheduledTaskTrigger -Weekly -DaysOfWeek Thursday -At '11:00'
-        New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At '11:00'
+    # Timed to land just after new information, Eastern (this machine's zone):
+    #   Wed 17:00  first practice report; the week's initial picks
+    #   Thu 18:50  Thursday inactives (~90 min before the 20:15 kickoff)
+    #   Fri 17:00  final game statuses (Out / Doubtful / Questionable)
+    #   Sat 17:00  Saturday designations and late-week news
+    #   Sun 11:45, 14:50, 19:00  inactives for the 13:00, 16:05/16:25 and 20:20 games
+    #   Mon 18:50  Monday night inactives
+    # Games already kicked off are never touched, so the later Sunday runs only
+    # see the games still to come. This replaced a Sunday 10:00 full re-predict
+    # that ran before any inactives were out.
+    Recheck  = @(
+        New-ScheduledTaskTrigger -Weekly -DaysOfWeek Wednesday -At '17:00'
+        New-ScheduledTaskTrigger -Weekly -DaysOfWeek Thursday  -At '18:50'
+        New-ScheduledTaskTrigger -Weekly -DaysOfWeek Friday    -At '17:00'
+        New-ScheduledTaskTrigger -Weekly -DaysOfWeek Saturday  -At '17:00'
+        New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday    -At '11:45'
+        New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday    -At '14:50'
+        New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday    -At '19:00'
+        New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday    -At '18:50'
     )
 
     # Tuesday morning: grade everything the week just settled.
@@ -135,4 +151,4 @@ Write-Output 'Confirm with:  Get-ScheduledTask -TaskPath \Edgelord\ | Get-Schedu
 
 Write-Output ''
 Write-Output 'Verify with:  Get-ScheduledTask -TaskPath \Edgelord\'
-Write-Output 'Test now:     Start-ScheduledTask -TaskName Sunday -TaskPath \Edgelord\'
+Write-Output 'Test now:     Start-ScheduledTask -TaskName Recheck -TaskPath \Edgelord\'

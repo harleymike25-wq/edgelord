@@ -452,3 +452,7 @@ table.ratings a { color: var(--text); }
 table.ratings td:first-child { white-space: nowrap; }
 table.stacked .cell-rec { display: block; color: var(--text); font-weight: 600; }
 table.stacked .cell-u { display: block; font-size: .78rem; }
+
+/* ---- a pick whose inputs changed after it was made ---- */
+.stale { margin: .5rem 0 0; font-size: .8rem; color: var(--warn); }
+.banner ul { margin: .35rem 0 0; padding-left: 1.1rem; }

@@ -63,8 +63,29 @@ export function GameCard({ game }: { game: Game }) {
         </p>
       )}
 
+      {game.recheck && (
+        <p className="stale">Inputs changed since this pick: {game.recheck.reasons[0]}
+          {game.recheck.reasons.length > 1 ? ` (+${game.recheck.reasons.length - 1} more)` : ""}
+        </p>
+      )}
+
       {score && <div className="scoreline">Final {score}</div>}
     </Link>
+  );
+}
+
+/** Every change that flagged the pick, for the game page. */
+export function RecheckBanner({ game }: { game: Game }) {
+  if (!game.recheck) return null;
+  return (
+    <div className="banner">
+      <strong>Inputs changed since this pick, not rerun yet.</strong>
+      <ul>
+        {game.recheck.reasons.map((r) => (
+          <li key={r}>{r}</li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

@@ -24,7 +24,7 @@
 #>
 param(
     [Parameter(Mandatory = $true, Position = 0)]
-    [ValidateSet('sunday', 'wednesday', 'thursday', 'monday', 'grade', 'lines', 'status', 'spend')]
+    [ValidateSet('recheck', 'rerun', 'slate', 'grade', 'lines', 'status', 'spend')]
     [string]$Job,
 
     [int]$Week,
@@ -52,12 +52,21 @@ function Invoke-Cli {
     & $python -m edgelord.cli @CliArgs
 }
 
+# The current NFL week from the schedule, as the scheduled runner resolves it.
+function Get-Week {
+    $env:PYTHONIOENCODING = 'utf-8'
+    # First week with an unplayed game. "Within the last two days" alone kept
+    # returning last week until Wednesday, because Monday night is in range.
+    (& $python -c "import datetime as d; from edgelord import db; db.init(); c=db.connect(); y=(d.date.today()-d.timedelta(days=1)).isoformat(); r=c.execute('SELECT week FROM games WHERE home_score IS NULL AND gameday >= ? ORDER BY gameday, gametime LIMIT 1', (y,)).fetchone(); print(r[0] if r else 1)").Trim()
+}
+
 # Jobs that only read, and the description shown before running.
 $readOnly = @{
     'grade'  = 'Refresh final scores and grade any finished games. No model calls.'
     'lines'  = 'Snapshot the current nflverse line. No model calls.'
     'status' = 'Show what is in the database. No model calls.'
     'spend'  = 'Show model spend by month. No model calls.'
+    'recheck' = 'Flag picks whose line or key injuries changed since they were made. No model calls.'
 }
 
 if ($readOnly.ContainsKey($Job)) {
@@ -67,21 +76,32 @@ if ($readOnly.ContainsKey($Job)) {
         'lines'  { Invoke-Cli @('poll-odds') }
         'status' { Invoke-Cli @('status') }
         'spend'  { Invoke-Cli @('spend') }
+        'recheck' {
+            $wk = if ($Week) { @('--week', $Week) } else { @('--week', (Get-Week)) }
+            $sn = if ($Season) { @('--season', $Season) } else { @() }
+            Invoke-Cli (@('recheck') + $wk + $sn)
+        }
     }
     exit $LASTEXITCODE
 }
 
 # --- jobs that spend money -------------------------------------------------
 
-# Sunday predicts the whole slate; the weekday jobs only re-predict games whose
-# number has crossed a key value since the last run, which is usually a handful.
-$isFullSlate = $Job -eq 'sunday'
-$estimate = if ($isFullSlate) { 16 * $COST_PER_GAME } else { 3 * $COST_PER_GAME }
-
-$description = if ($isFullSlate) {
-    "Full slate. Refresh scores, snapshot lines, grade finished games, predict every game, render the report, sync to Firestore."
+$wk = if ($Week) { $Week } else { Get-Week }
+$sn = if ($Season) { @('--season', $Season) } else { @() }
+if ($Job -eq 'slate') {
+    $estimate = 16 * $COST_PER_GAME
+    $description = "Full slate for week $wk. Predict every unplayed game (replaces existing picks)."
+    $cliArgs = @('predict', '--week', $wk, '--label', 'manual') + $sn
 } else {
-    "Midweek pass for $Job. Refresh, snapshot lines, grade, then re-predict only games whose number crossed a key value since the last run."
+    Invoke-Cli (@('recheck', '--week', $wk) + $sn)
+    $seasonExpr = if ($Season) { "$Season" } else { 'config.current_season()' }
+    $flagged = @(& $python -c "from edgelord import db; db.init(); c=db.connect(); from edgelord import config; print(c.execute('SELECT COUNT(*) FROM recheck_flags f JOIN games g ON g.game_id=f.game_id WHERE g.week=? AND g.season=?', ($wk, $seasonExpr)).fetchone()[0])")[0]
+    if ([int]$flagged -eq 0) { exit 0 }
+    $estimate = [int]$flagged * $COST_PER_GAME
+    $description = "Re-predict the $flagged flagged game(s) above."
+    # The cap is on top of whatever the scheduler already spent this week.
+    $cliArgs = @('recheck', '--week', $wk, '--run', '--allow', ('{0:N2}' -f ($estimate + 0.5))) + $sn
 }
 
 Write-Host ""
@@ -100,21 +120,11 @@ if (-not $Force) {
     }
 }
 
-# Sunday is its own job; the three weekday runs share the midweek path, which
-# derives its run label from the actual day of the week.
-$taskJob = if ($isFullSlate) { 'sunday' } else { 'midweek' }
-$taskArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $runner, '-Job', $taskJob)
-if ($Week)   { $taskArgs += @('-Week', $Week) }
-if ($Season) { $taskArgs += @('-Season', $Season) }
-# Label by the job you asked for, not by today's date -- running `thursday`
-# on a Tuesday should still be recorded as the Thursday pass.
-if (-not $isFullSlate) { $taskArgs += @('-Label', $Job) }
-
-& powershell @taskArgs
+Invoke-Cli $cliArgs
 $code = $LASTEXITCODE
+Invoke-Cli (@('report', '--week', $wk) + $sn) | Out-Null
+Invoke-Cli (@('sync') + $sn) | Select-Object -First 1
 
 Write-Host ""
 Invoke-Cli @('spend') | Select-Object -Last 2 | ForEach-Object { Write-Host "  $_" -ForegroundColor DarkGray }
-Write-Host ""
-Write-Host "  log: bot\logs\$(Get-Date -Format 'yyyy-MM').log" -ForegroundColor DarkGray
 exit $code

@@ -176,6 +176,15 @@ CREATE TABLE IF NOT EXISTS post_mortems (
     lesson         TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_post_mortems_game ON post_mortems(game_id);
+
+-- Live picks whose inputs changed since they were made (see recheck.py).
+-- Rewritten per week on every check; a rerun clears its game's flag.
+CREATE TABLE IF NOT EXISTS recheck_flags (
+    game_id        TEXT PRIMARY KEY,
+    prediction_id  INTEGER REFERENCES predictions(id),
+    checked_at     TEXT NOT NULL,
+    reasons        TEXT NOT NULL   -- JSON array of plain-language changes
+);
 """
 
 

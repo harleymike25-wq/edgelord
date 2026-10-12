@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 
 import { Masthead, SyntheticBanner } from "@/components/Chrome";
 import { DecisionTable, FactorPanel } from "@/components/Factors";
-import { ConvictionTag, PickBadge } from "@/components/GameCard";
+import { ConvictionTag, PickBadge, RecheckBanner } from "@/components/GameCard";
 import { HeadToHeadTable, MatchupTables } from "@/components/MatchupTable";
 import { PostMortemPanel } from "@/components/PostMortem";
 import {
@@ -58,6 +58,7 @@ export default async function GamePage({
 
         {p ? (
           <>
+            <RecheckBanner game={game} />
             {p.headline && <p className="headline">{p.headline}</p>}
 
             {/* Rendered as separate paragraphs. One unbroken block with figures

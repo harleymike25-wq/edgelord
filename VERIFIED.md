@@ -490,3 +490,18 @@ Week 4 reviews; they were restored from the 14:27 `public/data` snapshot. Now
 `max_tokens` scales with effort (32000 at xhigh/max), a `max_tokens` stop is
 reported as such, failed calls count toward the printed cost, and a failed
 review never overwrites a stored one (tested).
+
+**Picks are now rechecked against late injury news and line moves (2026-10-12).**
+Week 5 was picked on Thursday 10/8 and nothing looked again: the scheduled
+tasks had never been registered, and even registered, the Sunday job re-predicted
+every game at 10:00, before inactives, while the midweek job watched lines only.
+Two Week 5 losses (CLE, LAC) went to kickoff after a quarterback's status changed.
+`edgelord recheck --week N` now compares each live pick's pack with a fresh one
+and flags a key-number line move, an expected-QB change, any QB status change,
+or a starter moving into or out of Out/Doubtful; flags show on the site. Run
+free on Weeks 5-6: flagged exactly BUF/LA (3 -> 3.5, Ed Oliver Out) and the 14
+unpicked Week 6 games. `--run` reruns flagged games within
+EDGELORD_RECHECK_WEEKLY_USD, default 0 (flag only); that path is tested with a
+stubbed model but has not made a live call. The scheduler scripts now run one
+`recheck` job after each report and wave of inactives; the tasks are still not
+registered.

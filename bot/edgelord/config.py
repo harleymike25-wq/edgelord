@@ -36,6 +36,11 @@ PREDICT_EFFORT = os.getenv("EDGELORD_EFFORT", "medium")
 # Hard ceiling on model spend per calendar month, in USD. Checked before every
 # call; the run stops rather than silently running up a bill.
 MONTHLY_BUDGET_USD = float(os.getenv("EDGELORD_MONTHLY_BUDGET_USD", "25"))
+# What the scheduled `recheck` may spend on model calls per NFL week, without
+# asking. 0 means it only flags changed picks (on the site and in the log) and
+# never calls the model -- the owner's rule is no spend without a yes, and this
+# number is that yes, given once in advance.
+RECHECK_WEEKLY_USD = float(os.getenv("EDGELORD_RECHECK_WEEKLY_USD", "0"))
 
 # Fable 5 safety classifiers can decline a request outright. Without a fallback
 # the call simply fails; with one the API re-serves it on this model inside the

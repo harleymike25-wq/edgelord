@@ -74,7 +74,8 @@ def _game_documents(conn, season: int, week: int | None) -> list[dict]:
                f.data_gaps, f.payload,
                r.pick_result, r.profit_units, r.clv_points,
                r.closing_line, r.closing_total,
-               pm.verdict, pm.explanation, pm.lesson, pm.miss
+               pm.verdict, pm.explanation, pm.lesson, pm.miss,
+               rf.reasons AS recheck_reasons, rf.checked_at AS recheck_at
         FROM games g
         LEFT JOIN predictions p
                ON p.game_id = g.game_id AND p.superseded_by IS NULL
@@ -82,6 +83,8 @@ def _game_documents(conn, season: int, week: int | None) -> list[dict]:
         LEFT JOIN features f ON f.id = p.features_id
         LEFT JOIN results r ON r.prediction_id = p.id
         LEFT JOIN post_mortems pm ON pm.prediction_id = p.id
+        LEFT JOIN recheck_flags rf ON rf.game_id = g.game_id
+              AND rf.prediction_id IS p.id
         WHERE g.season = ?
     """
     params: list = [season]
@@ -175,6 +178,13 @@ def _game_documents(conn, season: int, week: int | None) -> list[dict]:
                 "key_factors": json.loads(r["key_factors"] or "[]"),
                 "decision_table": json.loads(r["decision_table"] or "[]"),
                 "data_gaps": json.loads(r["data_gaps"] or "[]"),
+            }
+        # The pick's inputs changed after it was made and it has not been rerun.
+        # Shown on the card so a stale pick never reads as a current one.
+        if r["recheck_reasons"] and r["pick_result"] is None:
+            doc["recheck"] = {
+                "checked_at": r["recheck_at"],
+                "reasons": json.loads(r["recheck_reasons"]),
             }
         if r["pick_result"] is not None:
             doc["result"] = {
