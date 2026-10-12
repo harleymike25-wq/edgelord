@@ -52,10 +52,29 @@ class TestInjuryChanges:
         new = _pack(away_situation={"expected_starter": "Tyler Huntley"})
         assert "BAL expected QB Lamar Jackson -> Tyler Huntley" in recheck.injury_changes(old, new)
 
-    def test_any_quarterback_status_change_is_flagged(self):
-        old = _pack(away_inj=[_inj("Dillon Gabriel", "Full Participation in Practice", position="QB", starter=False, snap=0)])
-        new = _pack(away_inj=[_inj("Dillon Gabriel", "Questionable", position="QB", starter=False, snap=0)])
-        assert recheck.injury_changes(old, new)
+    def test_starting_quarterback_status_change_is_flagged(self):
+        old = _pack(away_qb="Dillon Gabriel", away_inj=[_inj("Dillon Gabriel", "Full Participation in Practice", position="QB")])
+        new = _pack(away_qb="Dillon Gabriel", away_inj=[_inj("Dillon Gabriel", "Questionable", position="QB")])
+        assert recheck.injury_changes(old, new) == [
+            "BAL QB Dillon Gabriel: Full Participation in Practice -> Questionable"
+        ]
+
+    def test_backup_quarterback_is_ignored(self):
+        # DEN/LAC Week 5: Lance went Doubtful; Herbert started every snap.
+        backup = dict(position="QB", starter=False, snap=0)
+        old = _pack(home_qb="Justin Herbert")
+        new = _pack(home_qb="Justin Herbert", home_inj=[_inj("Trey Lance", "Doubtful", **backup)])
+        assert recheck.injury_changes(old, new) == []
+
+    def test_backup_who_becomes_the_expected_starter_is_flagged(self):
+        old = _pack(away_situation={"expected_starter": "Lamar Jackson"},
+                    away_inj=[_inj("Lamar Jackson", "Did Not Participate In Practice", position="QB")])
+        new = _pack(away_situation={"expected_starter": "Tyler Huntley"},
+                    away_inj=[_inj("Lamar Jackson", "Out", position="QB")])
+        assert recheck.injury_changes(old, new) == [
+            "BAL expected QB Lamar Jackson -> Tyler Huntley",
+            "BAL QB Lamar Jackson: Did Not Participate In Practice -> Out",
+        ]
 
     def test_practice_churn_alone_is_ignored(self):
         old = _pack(home_inj=[_inj("A", "Did Not Participate In Practice")])

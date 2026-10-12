@@ -12,8 +12,11 @@ candidate for a paid rerun:
 - the spread crossing a key number (or a total moving 1.5+ on a total pick),
   measured against the number the pick itself saw, not a snapshot lookup;
 - the expected starting quarterback changing;
-- any quarterback's game status changing;
+- the expected starter's own game status changing;
 - a starter (or a 50%+ snap player) moving into or out of Out/Doubtful.
+
+Backup quarterbacks do not count. A rule that flagged any quarterback would
+have rerun DEN/LAC because Trey Lance went Doubtful while Herbert started.
 
 Practice-participation churn on its own does not count. It moves every day and
 a rerun on each would cost a slate a week.
@@ -69,12 +72,14 @@ def _expected_qb(pack: dict, side: str) -> str | None:
     return qb
 
 
-def _matters(p: dict) -> bool:
-    return (
-        (p.get("position") or "").upper() == "QB"
-        or bool(p.get("starter"))
-        or (p.get("snap_pct_prior") or 0) >= SNAP_SHARE
-    )
+def _is_qb(p: dict) -> bool:
+    return (p.get("position") or "").upper() == "QB"
+
+
+def _matters(p: dict, starting_qbs: set[str]) -> bool:
+    if _is_qb(p):
+        return p.get("player") in starting_qbs
+    return bool(p.get("starter")) or (p.get("snap_pct_prior") or 0) >= SNAP_SHARE
 
 
 def injury_changes(old: dict, new: dict) -> list[str]:
@@ -85,17 +90,17 @@ def injury_changes(old: dict, new: dict) -> list[str]:
         if before and after and before != after:
             reasons.append(f"{team} expected QB {before} -> {after}")
 
+        starting_qbs = {q for q in (before, after) if q}
         o, n = _players(old, side), _players(new, side)
         for name in sorted(set(o) | set(n)):
             p = n.get(name) or o[name]
-            if not _matters(p):
+            if not _matters(p, starting_qbs):
                 continue
             a = _availability((o.get(name) or {}).get("status"))
             b = _availability((n.get(name) or {}).get("status"))
             if a == b:
                 continue
-            is_qb = (p.get("position") or "").upper() == "QB"
-            if is_qb or "out" in (a, b):
+            if _is_qb(p) or "out" in (a, b):
                 was = (o.get(name) or {}).get("status") or "not listed"
                 now = (n.get(name) or {}).get("status") or "not listed"
                 reasons.append(f"{team} {p.get('position') or ''} {name}: {was} -> {now}".replace("  ", " "))
