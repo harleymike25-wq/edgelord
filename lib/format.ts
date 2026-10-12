@@ -93,6 +93,17 @@ export function edge(n: number | null | undefined): string {
   return `${n > 0 ? "+" : ""}${n.toFixed(1)} pts`;
 }
 
+/**
+ * The edge with the side it belongs to: "+0.5 pts on LA", "+2.0 pts on the
+ * under". The edge is always measured toward the pick, so a bare "+0.5" left
+ * readers asking which team it was for.
+ */
+export function edgeOn(p: { edge?: number | null; pick_type: string; pick_side: string | null }): string {
+  if (p.edge === null || p.edge === undefined || !p.pick_side) return "—";
+  const side = p.pick_type === "total" ? `the ${p.pick_side}` : p.pick_side;
+  return `${edge(p.edge)} on ${side}`;
+}
+
 export function isCoinFlip(n: number | null | undefined): boolean {
   return n !== null && n !== undefined && n < COIN_FLIP_EDGE;
 }

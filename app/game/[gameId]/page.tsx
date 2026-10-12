@@ -8,7 +8,7 @@ import { HeadToHeadTable, MatchupTables } from "@/components/MatchupTable";
 import { PostMortemPanel } from "@/components/PostMortem";
 import {
   clv,
-  edge,
+  edgeOn,
   finalScore,
   isCoinFlip,
   kickoff,
@@ -79,7 +79,7 @@ export default async function GamePage({
 
               <dt>Edge</dt>
               <dd>
-                {edge(p.edge)}
+                {edgeOn(p)}
                 {isCoinFlip(p.edge) && (
                   <span className="source"> · coin flip: the line is about right by its own number</span>
                 )}

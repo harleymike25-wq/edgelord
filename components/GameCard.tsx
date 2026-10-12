@@ -2,13 +2,13 @@ import Link from "next/link";
 
 import {
   describePick,
-  edge,
+  edgeOn,
   finalScore,
   isCoinFlip,
   kickoff,
   units,
 } from "@/lib/format";
-import type { Game } from "@/lib/types";
+import type { Game, Prediction } from "@/lib/types";
 
 export function PickBadge({ game }: { game: Game }) {
   const p = game.prediction;
@@ -58,7 +58,7 @@ export function GameCard({ game }: { game: Game }) {
         <div>
           <ConvictionTag conviction={p?.conviction} />
           <PickBadge game={game} />
-          <EdgeNote value={p?.edge} />
+          {p && <EdgeNote p={p} />}
           {game.result && (
             <div className="conf">{units(game.result.profit_units)}</div>
           )}
@@ -85,9 +85,9 @@ export function GameCard({ game }: { game: Game }) {
 }
 
 /** How far the projection beat the line. The tier itself is the ConvictionTag. */
-export function EdgeNote({ value }: { value?: number | null }) {
-  if (value === null || value === undefined) return null;
-  return <div className={`edge-note ${isCoinFlip(value) ? "flip" : ""}`}>edge {edge(value)}</div>;
+export function EdgeNote({ p }: { p: Prediction }) {
+  if (p.edge === null || p.edge === undefined) return null;
+  return <div className={`edge-note ${isCoinFlip(p.edge) ? "flip" : ""}`}>edge {edgeOn(p)}</div>;
 }
 
 /** Every change that flagged the pick, for the game page. */
