@@ -479,3 +479,14 @@ Also tested, free, on 2017–2025 (927 games, weeks 2–8): giving the current
 season more weight early makes the EPA blend predict margins *worse*; the
 present 6-game prior (33% current at Week 4) beats 50% and 60%. Left unchanged.
 Big favourites (7+) against teams at −7/game or worse covered 141-141; no edge.
+
+**A max-effort post-mortem run billed $1.23 and wrote nothing (2026-10-12).**
+`EDGELORD_EFFORT=max postmortem --regenerate` on Weeks 4-5 hit the flat
+`max_tokens` 8000 on every call: adaptive thinking spent the whole allowance and
+no text block came back. Seven calls at $0.176 each before it was stopped, and
+the run summary printed `cost_usd 0.0` because a failed call's cost was never
+counted. Worse, `--regenerate` stored a null narrative over the three existing
+Week 4 reviews; they were restored from the 14:27 `public/data` snapshot. Now
+`max_tokens` scales with effort (32000 at xhigh/max), a `max_tokens` stop is
+reported as such, failed calls count toward the printed cost, and a failed
+review never overwrites a stored one (tested).

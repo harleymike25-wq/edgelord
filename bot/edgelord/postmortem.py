@@ -33,6 +33,19 @@ NEUTRAL_FAVORS = {"", "neither", "none", "n/a"}
 
 VERDICTS = ("thesis_wrong", "thesis_right_variance", "bad_input", "data_gap")
 
+# Output ceiling by effort. Thinking counts against max_tokens, and a flat 8000
+# let max effort think through the whole allowance and return no text: seven
+# 2026-10-12 calls billed $0.18 each for nothing.
+MAX_TOKENS = {"low": 8000, "medium": 8000, "high": 16000, "xhigh": 32000, "max": 32000}
+
+
+class ReviewFailed(RuntimeError):
+    """A review call that billed but produced nothing usable."""
+
+    def __init__(self, message: str, cost_usd: float = 0.0):
+        super().__init__(message)
+        self.cost_usd = cost_usd
+
 
 def _severity(points_short: float) -> str:
     """How badly the pick lost against its number.
@@ -468,7 +481,7 @@ def explain(conn, row: dict, miss: dict, *, model: str | None = None,
 
     request = {
         "model": model,
-        "max_tokens": 8000,
+        "max_tokens": MAX_TOKENS.get(effort, 8000),
         "system": SYSTEM_PROMPT,
         "thinking": {"type": "adaptive"},
         "output_config": {
@@ -494,11 +507,16 @@ def explain(conn, row: dict, miss: dict, *, model: str | None = None,
     )
 
     if response.stop_reason == "refusal":
-        raise RuntimeError(f"model declined to review {row['game_id']}")
+        raise ReviewFailed(f"model declined to review {row['game_id']}", cost)
+    if response.stop_reason == "max_tokens":
+        raise ReviewFailed(
+            f"{row['game_id']}: hit max_tokens ({request['max_tokens']}) "
+            f"at effort {effort} before finishing", cost,
+        )
 
     text = next((b.text for b in response.content if b.type == "text"), None)
     if not text:
-        raise RuntimeError(f"no text block returned for {row['game_id']}")
+        raise ReviewFailed(f"no text block returned for {row['game_id']}", cost)
 
     out = json.loads(text)
     out["_model"] = response.model
@@ -507,10 +525,20 @@ def explain(conn, row: dict, miss: dict, *, model: str | None = None,
 
 
 def store(conn, row: dict, miss: dict, narrative: dict | None) -> None:
-    """Persist one post-mortem, replacing any earlier review of the same pick."""
+    """Persist one post-mortem, replacing any earlier review of the same pick.
+
+    The miss is always refreshed. The narrative is replaced only by a new one:
+    a failed `--regenerate` call used to blank three paid-for reviews.
+    """
     conn.execute(
-        "INSERT OR REPLACE INTO post_mortems (prediction_id, game_id, created_at, "
-        "model, miss, verdict, explanation, lesson) VALUES (?,?,?,?,?,?,?,?)",
+        "INSERT INTO post_mortems (prediction_id, game_id, created_at, "
+        "model, miss, verdict, explanation, lesson) VALUES (?,?,?,?,?,?,?,?) "
+        "ON CONFLICT(prediction_id) DO UPDATE SET "
+        "game_id=excluded.game_id, created_at=excluded.created_at, miss=excluded.miss, "
+        "model=COALESCE(excluded.model, model), "
+        "verdict=COALESCE(excluded.verdict, verdict), "
+        "explanation=COALESCE(excluded.explanation, explanation), "
+        "lesson=COALESCE(excluded.lesson, lesson)",
         (
             row["id"],
             row["game_id"],
@@ -603,6 +631,7 @@ def generate(conn, *, season: int | None = None, week: int | None = None,
                 with_model = False
             except Exception as exc:  # noqa: BLE001
                 out["failed"] += 1
+                out["cost_usd"] += getattr(exc, "cost_usd", 0.0)
                 out["errors"].append(f"{row['game_id']}: {exc}")
 
         store(conn, row, miss, narrative)

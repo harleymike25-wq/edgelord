@@ -11,6 +11,8 @@ finished, so letting one reach the record inflates it with a replay nobody
 staked. `grade` scores them deliberately; `record` must not count them.
 """
 
+import json
+
 import pytest
 
 from edgelord import config, db, postmortem, sync, track
@@ -354,3 +356,31 @@ class TestStatusChanges:
 
     def test_missing_pack_means_unknown_not_unchanged(self):
         assert postmortem.compute_miss(_row(), [])["changed_after_pick"] is None
+
+
+class TestAFailedReviewKeepsTheLastOne:
+    """`--regenerate` stores the fresh miss even when the model call fails.
+
+    It used to store a null narrative over the old one, which blanked three
+    paid-for Week 4 reviews when a max-effort rerun returned no text.
+    """
+
+    def test_a_null_narrative_does_not_erase_the_stored_one(self, conn):
+        _played_game(conn)
+        _prediction(conn, run_label="sunday")
+        row = {"id": 1, "game_id": GAME}
+        old = {"verdict": "thesis_wrong", "explanation": "e", "lesson": "l", "_model": "m"}
+        postmortem.store(conn, row, {"v": 1}, old)
+        postmortem.store(conn, row, {"v": 2}, None)
+
+        r = conn.execute("SELECT miss, verdict, explanation, lesson, model FROM post_mortems").fetchone()
+        assert json.loads(r["miss"]) == {"v": 2}
+        assert (r["verdict"], r["explanation"], r["lesson"], r["model"]) == ("thesis_wrong", "e", "l", "m")
+
+    def test_a_new_narrative_still_replaces_the_old(self, conn):
+        _played_game(conn)
+        _prediction(conn, run_label="sunday")
+        row = {"id": 1, "game_id": GAME}
+        postmortem.store(conn, row, {}, {"verdict": "thesis_wrong", "explanation": "a", "lesson": "a"})
+        postmortem.store(conn, row, {}, {"verdict": "data_gap", "explanation": "b", "lesson": "b"})
+        assert conn.execute("SELECT verdict FROM post_mortems").fetchone()[0] == "data_gap"
