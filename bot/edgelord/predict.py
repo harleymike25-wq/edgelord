@@ -394,6 +394,47 @@ def _thin_evidence(pack: dict) -> bool:
     return False
 
 
+def align_side(pack: dict, result: dict) -> bool:
+    """Make the pick the side the model's own number favours. True if it moved.
+
+    The prompt says the move and the side must agree, but nothing enforced it:
+    2026 W1 took DAL with its own projection 3.5 points on the Giants' side of
+    the line. A pick against its own number is not a judgement, it is a slip,
+    so the side follows the number and the write-up says so up front.
+    A zero move leaves the model's side alone -- every game still gets one.
+    """
+    market = pack.get("market") or {}
+    game = pack.get("game") or {}
+    side = result.get("pick_side")
+    if result.get("pick_type") == "spread":
+        if market.get("current_spread_home") is None:
+            return False
+        adj = float(result["market_adjustment"])
+        home, away = game.get("home_team"), game.get("away_team")
+        want = home if adj > 0 else away if adj < 0 else side
+        gap = abs(adj)
+    elif result.get("pick_type") == "total":
+        total = market.get("current_total")
+        if total is None:
+            return False
+        diff = float(result["projected_total"]) - float(total)
+        want = "over" if diff > 0 else "under" if diff < 0 else side
+        gap = abs(diff)
+    else:
+        return False
+    if want == side:
+        return False
+    result["pick_side"] = want
+    # The number moved the side, but the reasoning argued the other one, so a
+    # switched pick is never rated above a lean.
+    result["_side_switched"] = True
+    result["paragraph"] = (
+        f"[Pick switched from {side} to {want}: the model's own projection "
+        f"favours {want} by {gap:g} against the line.]\n\n" + result["paragraph"]
+    )
+    return True
+
+
 def computed_conviction(pack: dict, result: dict) -> str:
     """'best_bet', 'lean' or 'coin_flip', decided by arithmetic, not the model.
 
@@ -423,7 +464,7 @@ def computed_conviction(pack: dict, result: dict) -> str:
         # on a 1.5-point edge with 60% of both teams' figures from 2025, and
         # lost by 24.5.
         if crosses and edge >= KEY_NUMBER_MIN_EDGE and not thin:
-            return "best_bet"
+            return "lean" if result.get("_side_switched") else "best_bet"
     elif result["pick_type"] == "total":
         total = market.get("current_total")
         if total is None:
@@ -434,7 +475,7 @@ def computed_conviction(pack: dict, result: dict) -> str:
         return "lean"
     bar = BEST_BET_EDGE_THIN if thin else BEST_BET_EDGE
     if edge >= bar:
-        return "best_bet"
+        return "lean" if result.get("_side_switched") else "best_bet"
     return "coin_flip" if edge < COIN_FLIP_EDGE else "lean"
 
 
@@ -572,6 +613,7 @@ def predict(
         raise RuntimeError(f"no text block returned for {pack['game']['game_id']}")
 
     out = json.loads(text)
+    align_side(pack, out)
     # Derived here rather than at storage time so the CLI, the report and the
     # stored row all read the same number off one calculation.
     out["projected_margin"] = derived_margin(pack, out)

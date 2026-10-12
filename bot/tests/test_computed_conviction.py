@@ -125,3 +125,45 @@ class TestCoinFlips:
 
     def test_total_one_and_a_half_is_a_lean(self):
         assert rate(_pack(3.0, 45.5), _total("under", 44.0)) == "lean"
+
+
+class TestSideFollowsTheNumber:
+    """A pick against the model's own projection is switched to the other side."""
+
+    def _r(self, result):
+        return {**result, "paragraph": "p"}
+
+    def test_spread_pick_against_its_own_number_is_switched(self):
+        # 2026 W1 DAL @ NYG: took the away side with the move toward home.
+        r = self._r(_spread(AWAY, 3.5))
+        assert predict.align_side(_pack(-1.5), r) is True
+        assert r["pick_side"] == HOME
+        assert r["paragraph"].startswith(f"[Pick switched from {AWAY} to {HOME}")
+        assert r["paragraph"].endswith("p")
+
+    def test_agreeing_pick_is_left_alone(self):
+        r = self._r(_spread(HOME, 1.0))
+        assert predict.align_side(_pack(3.0), r) is False
+        assert r == self._r(_spread(HOME, 1.0))
+
+    def test_zero_move_keeps_the_models_side(self):
+        r = self._r(_spread(AWAY, 0.0))
+        assert predict.align_side(_pack(3.0), r) is False
+        assert r["pick_side"] == AWAY
+
+    def test_total_against_its_own_number_is_switched(self):
+        r = self._r(_total("over", 43.0))
+        assert predict.align_side(_pack(3.0, 45.5), r) is True
+        assert r["pick_side"] == "under"
+
+    def test_switched_pick_is_never_a_best_bet(self):
+        # Its number clears the 3-point bar, but the write-up argued the
+        # other side, so it caps at lean.
+        r = self._r(_spread(AWAY, 3.5))
+        predict.align_side(_pack(-1.5, prior_weight=0.6), r)
+        assert rate(_pack(-1.5, prior_weight=0.6), r) == "lean"
+
+    def test_switched_small_move_is_still_a_coin_flip(self):
+        r = self._r(_spread(AWAY, 0.5))
+        predict.align_side(_pack(-1.5), r)
+        assert rate(_pack(-1.5), r) == "coin_flip"
