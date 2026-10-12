@@ -505,3 +505,13 @@ EDGELORD_RECHECK_WEEKLY_USD, default 0 (flag only); that path is tested with a
 stubbed model but has not made a live call. The scheduler scripts now run one
 `recheck` job after each report and wave of inactives; the tasks are still not
 registered.
+
+**The model no longer sees luck measures (2026-10-12).** About half of 2026's
+bigger-edge picks (1+ point) leaned on record-vs-points, close-game record or
+turnover margin rated "strong", against a prompt that said "slight" at most, and
+18 of those 20 picks were underdogs. Those measures were already shown priced
+in on 2017-2025. `build_prompt` now sends `season_record` (record and point
+differential) in place of `regression_indicators`, and drops
+`prior_season_record`; the stored pack and the site keep both. The prompt's
+"dog at +3.5" best-bet example is replaced by the key-number rule the code
+applies. Applies from the next live pick; not yet run through one.

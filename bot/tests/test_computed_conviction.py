@@ -167,3 +167,36 @@ class TestSideFollowsTheNumber:
         r = self._r(_spread(AWAY, 0.5))
         predict.align_side(_pack(-1.5), r)
         assert rate(_pack(-1.5), r) == "coin_flip"
+
+
+class TestModelViewDropsLuck:
+    """Luck measures are priced in and the model overrated them; it no longer sees them."""
+
+    REG = {
+        "gp": 4, "wins": 0, "losses": 4, "ties": 0, "points_for": 67,
+        "points_against": 106, "point_diff_per_game": -9.75,
+        "pythagorean_delta": -0.25, "one_score_wins": 0, "turnover_margin": -1,
+        "opp_fg_pct": 0.875,
+    }
+
+    def _pack(self):
+        p = _pack(3.5)
+        p["home"] = {"regression_indicators": dict(self.REG), "prior_season_record": dict(self.REG), "team": HOME}
+        return p
+
+    def test_record_and_point_differential_stay(self):
+        home = predict.model_view(self._pack())["home"]
+        assert home["season_record"] == {
+            "gp": 4, "wins": 0, "losses": 4, "ties": 0, "points_for": 67,
+            "points_against": 106, "point_diff_per_game": -9.75,
+        }
+
+    def test_luck_measures_and_last_season_are_gone(self):
+        prompt = predict.build_prompt({**self._pack(), "game": {**_pack(3.5)["game"], "gameday": "2026-10-18", "week": 6, "season": 2026}})
+        for luck in ("pythagorean", "one_score", "turnover_margin", "opp_fg_pct", "prior_season_record", "regression_indicators"):
+            assert luck not in prompt
+
+    def test_stored_pack_is_untouched(self):
+        p = self._pack()
+        predict.model_view(p)
+        assert "regression_indicators" in p["home"] and "prior_season_record" in p["home"]

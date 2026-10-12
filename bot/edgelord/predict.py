@@ -45,18 +45,12 @@ number from scratch and being surprised when it disagrees.
 - Key numbers matter disproportionately. In the NFL roughly one game in seven \
 lands on exactly 3 and one in seventeen on exactly 7. Crossing 3 is worth far \
 more than half a point anywhere else.
-- The regression indicators — `pythagorean_delta`, one-score record, turnover \
-margin, opponent field goal percentage — describe real luck, but they are the \
-best-known numbers in football and the line already prices them. A team whose \
-record outruns its points is not, by that fact alone, mispriced: the market \
-knows its point differential too. Do not pick a side because one team is \
-"due to regress". Cite regression only when you can say why this particular \
-line has NOT already accounted for it, and weight it no higher than "slight" \
-otherwise.
-- `prior_season_record` is last season's luck. Early in a season it is the \
-weakest argument in the pack: the offseason line was set by people who \
-regressed those teams already, often further than you would. Never fade a team \
-on last season's luck alone.
+- `season_record` is each team's record and point differential this season. \
+Luck measures (record against points scored, close-game record, turnover \
+margin, field-goal percentages, last season's luck) are deliberately not in \
+the pack: the line already prices them, and "due to regress" is not a reason \
+to take a side. Build the case from matchups, quarterbacks, injuries and the \
+number itself.
 - Recent-form splits (`efficiency_last_5`) matter more than season-to-date when \
 they diverge sharply, but small samples are noisy — say which you are leaning on.
 - `matchup.unit_ratings` pairs each offence against the defence it will actually \
@@ -123,9 +117,9 @@ Set `conviction` to one of:
 `market_adjustment` of at least 2 points toward the side you are taking (at \
 least 3 when `efficiency_provenance` \
 shows the figures are mostly prior-season, or `roster_turnover` reports \
-continuity below about 0.7 for either team), OR a clear key-number edge where \
-the number itself is mispositioned — taking a dog at +3.5 on a game that \
-projects near a field goal, say. If the key number is doing the work, say so.
+continuity below about 0.7 for either team), OR a move of at least a point \
+that carries the number across 3 or 7, when the figures are not mostly \
+prior-season. If the key number is doing the work, say so.
 
 - "lean" — you have a side and mild reasons for it, but the edge is inside the \
 noise. A lean is a recorded opinion, \
@@ -204,9 +198,9 @@ specific thing that would kill the pick. If a move to 13 would end it, say so.
 
   Write so it can be read at a glance. A wall of prose with figures buried \
 mid-sentence is unreadable — carry at most two or three numbers per paragraph \
-and put the rest in `key_factors`, which is displayed separately. Prefer "a \
-+22 turnover margin" to "a turnover margin of +22 (+1.29 per game) against a \
-league average of +0.0". Round: 0.086 EPA/play is "+0.09", 77.4% is "77%". \
+and put the rest in `key_factors`, which is displayed separately. Prefer "an \
+8% sack rate" to "a sack rate of 8.1% (26 sacks on 321 dropbacks) against a \
+league average of 6.9%". Round: 0.086 EPA/play is "+0.09", 77.4% is "77%". \
 Anything past two significant figures is noise dressed as precision.
 - `confidence` is 1-100 and should be honestly calibrated. Most NFL sides are close \
 to a coin flip against the spread; a confidence above 65 should be rare and \
@@ -214,7 +208,7 @@ earned. Do not inflate it to seem decisive.
 - `pick_type` is the market you are calling: "spread" or "total". Always one of \
 the two, always with a side in `pick_side`.
 - `key_factors` is 2-5 short phrases naming the specific inputs you leaned on, \
-each carrying its number: "pythagorean delta +0.21", "47% defensive continuity", \
+each carrying its number: "Herbert -0.16 EPA/dropback", "47% defensive continuity", \
 "line sits on 3". These are rendered as tags beside the write-up, so this is \
 where precise figures belong rather than in the prose.
 - `decision_table` is the ledger behind the call: 5-10 rows, one per factor \
@@ -305,7 +299,7 @@ RESPONSE_SCHEMA = {
                 "properties": {
                     "factor": {
                         "type": "string",
-                        "description": "The input, named plainly: 'Pythagorean regression', 'Weather'.",
+                        "description": "The input, named plainly: 'Quarterback form', 'Weather'.",
                     },
                     "reading": {
                         "type": "string",
@@ -483,8 +477,33 @@ def _client() -> anthropic.Anthropic:
     return anthropic.Anthropic(api_key=config.anthropic_key())
 
 
+# What the model sees of each team's record. The rest of `regression_indicators`
+# is luck measures, and `prior_season_record` is last season's: both are priced
+# into the line (tested on 2017-2025), yet the model rated them "strong" on
+# about half of 2026's bigger edges, nearly all underdogs. They stay in the
+# stored pack and on the site.
+SEASON_RECORD_FIELDS = (
+    "gp", "wins", "losses", "ties", "points_for", "points_against",
+    "point_diff_per_game",
+)
+
+
+def model_view(pack: dict) -> dict:
+    """The pack as sent to the model, with the luck measures removed."""
+    view = {**pack}
+    for side in ("home", "away"):
+        block = dict(pack.get(side) or {})
+        reg = block.pop("regression_indicators", None)
+        block.pop("prior_season_record", None)
+        if reg:
+            block["season_record"] = {k: reg[k] for k in SEASON_RECORD_FIELDS if k in reg}
+        view[side] = block
+    return view
+
+
 def build_prompt(pack: dict) -> str:
     game = pack["game"]
+    pack = model_view(pack)
     return (
         f"Analyse this game and return your assessment.\n\n"
         f"{game['away_team']} at {game['home_team']} — "
