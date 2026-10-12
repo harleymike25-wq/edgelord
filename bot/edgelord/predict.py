@@ -371,7 +371,7 @@ LOW_CONTINUITY = 0.7
 KEY_NUMBERS = (3.0, 7.0)
 KEY_NUMBER_MIN_EDGE = 1.0
 # Under a point off the line the model is saying the number is right and naming
-# a side only because every game gets one. From 2026 Week 6 those are labelled
+# a side only because every game gets one. From 2026 Week 5 those are labelled
 # coin flips, so "lean" means a real if modest view rather than 71% of picks.
 COIN_FLIP_EDGE = 1.0
 

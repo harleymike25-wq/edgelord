@@ -29,13 +29,14 @@ export function PickBadge({ game }: { game: Game }) {
 }
 
 /**
- * Best bets and coin flips get a tag; a lean is the default and needs none.
- * Coin flips (from 2026 Week 6) are picks under a point off the line: the
- * model thinks the number is right and named a side because it must.
+ * Every pick shows its tier. Coin flips are under a point off the line: the
+ * model thinks the number is right and named a side because it must. A lean is
+ * a point or more, short of the best-bet bar.
  */
 export function ConvictionTag({ conviction }: { conviction?: string }) {
   if (conviction === "best_bet") return <span className="best-bet">BEST BET</span>;
   if (conviction === "coin_flip") return <span className="coin-flip">COIN FLIP</span>;
+  if (conviction === "lean") return <span className="lean-tag">LEAN</span>;
   return null;
 }
 

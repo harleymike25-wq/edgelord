@@ -84,7 +84,7 @@ export function clv(n: number | null | undefined): string {
 /**
  * Under a point off the line is a coin flip: the model is saying the line is
  * right and picking a side because every game gets one. Mirrors COIN_FLIP_EDGE
- * in bot/edgelord/predict.py, which sets the stored tier from 2026 Week 6.
+ * in bot/edgelord/predict.py, which sets the stored tier from 2026 Week 5.
  */
 export const COIN_FLIP_EDGE = 1;
 

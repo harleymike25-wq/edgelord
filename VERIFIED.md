@@ -527,3 +527,9 @@ record and CLV by edge on the site. Undo is one function: drop the
 14e1e7c. Same day, also first applied from Week 6: coin-flip tier (9dfe3dd,
 bf23998), picks switched to the side their own number favours (905f023), and
 key-number best bets held to the thin-evidence bar (a454e0a).
+
+**Week 5 relabelled into coin flips (2026-10-12).** At the owner's request the
+coin-flip tier was applied to Week 5 after the fact: 7 leans with an edge under
+a point (PHI, IND, TEN, NYG, LAC, SF, LA) are now `coin_flip`; best bets were
+not touched. Weeks 1-4 stay as recorded (all leans). Every card now shows its
+tier (BEST BET, LEAN or COIN FLIP).
