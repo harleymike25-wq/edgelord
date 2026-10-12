@@ -56,7 +56,7 @@ export function GameCard({ game }: { game: Game }) {
             {game.divisional ? " · divisional" : ""}
           </div>
         </div>
-        <div>
+        <div className="pick-stack">
           <ConvictionTag conviction={p?.conviction} />
           <PickBadge game={game} />
           {p && <EdgeNote p={p} />}
