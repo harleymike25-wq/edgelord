@@ -101,7 +101,7 @@ WHY the market's margin is too wide, the honest adjustment is 0.
 
 0 is a good answer and should be a common one. Most games are priced correctly \
 and the right response to a correctly priced game is a small adjustment and a \
-"lean", not a manufactured reason to move the number. Moving it toward the \
+"coin_flip", not a manufactured reason to move the number. Moving it toward the \
 favourite is equally available to you whenever the case is there.
 
 ALWAYS PICK A SIDE, THEN RATE YOUR CONVICTION:
@@ -128,11 +128,17 @@ the number itself is mispositioned — taking a dog at +3.5 on a game that \
 projects near a field goal, say. If the key number is doing the work, say so.
 
 - "lean" — you have a side and mild reasons for it, but the edge is inside the \
-noise. This is the honest default for most games. A lean is a recorded opinion, \
-not a recommendation to bet, and saying "this is close to a coin flip, I lean X" \
-is a perfectly good lean.
+noise. A lean is a recorded opinion, \
+not a recommendation to bet. A lean needs a `market_adjustment` of at least 1 \
+point toward your side.
 
-On a normal slate expect a handful of best bets and mostly leans. If most of a \
+- "coin_flip" — your `market_adjustment` is under 1 point either way: you think \
+the line is about right and are naming a side only because every game gets one. \
+Call it that in the write-up: start the paragraph with "Coin flip:" and the side \
+(e.g. "Coin flip: Rams -3.5."), never "Lean". Then say in a sentence why the \
+number looks right, and what tipped you to this side.
+
+On a normal slate expect a handful of best bets, then leans and coin flips. If most of a \
 card comes back "best_bet", the bar has been set too low.
 
 The edge you describe in the paragraph must match `market_adjustment`. Do not \
@@ -239,11 +245,12 @@ RESPONSE_SCHEMA = {
         },
         "conviction": {
             "type": "string",
-            "enum": ["best_bet", "lean"],
+            "enum": ["best_bet", "lean", "coin_flip"],
             "description": (
                 "How much the pick is worth acting on. 'best_bet' clears the "
-                "edge bar and is worth betting; 'lean' is a recorded opinion "
-                "whose edge sits inside the noise."
+                "edge bar and is worth betting; 'lean' is a modest view at least "
+                "a point off the line; 'coin_flip' is under a point, the line "
+                "about right."
             ),
         },
         "confidence": {
