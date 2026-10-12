@@ -219,6 +219,36 @@ def predict_one(conn, builder, game_id: str, *, effort=None, label="manual",
     return result
 
 
+def print_moneydog(conn, season: int, week: int) -> dict | None:
+    """Choose or keep the week's Moneydog (free) and print it."""
+    from . import moneydog
+
+    md = moneydog.select(conn, season, week)
+    conn.commit()
+    if md:
+        print(
+            f"moneydog  {md['team']} +{md['odds']}  win {md['win_prob']:.0%} "
+            f"vs priced {md['implied_prob']:.0%}  ev {md['ev']:+.2f}u"
+        )
+    return md
+
+
+def cmd_moneydog(args) -> int:
+    from . import moneydog
+
+    db.init()
+    season = args.season or config.current_season()
+    with db.session() as conn:
+        for c in moneydog.candidates(conn, season, args.week)[:6]:
+            print(
+                f"  {c['game_id']:<18} {c['team']:<4} +{c['odds']:<4} "
+                f"win {c['win_prob']:.0%} vs priced {c['implied_prob']:.0%}  ev {c['ev']:+.2f}u"
+            )
+        print_moneydog(conn, season, args.week)
+        moneydog.grade(conn, season)
+    return 0
+
+
 def cmd_recheck(args) -> int:
     from . import predict as predictor
     from . import recheck
@@ -263,6 +293,7 @@ def cmd_recheck(args) -> int:
                 print(f"stopping: {e}", file=sys.stderr)
                 break
             spent = recheck.week_spend(conn, season, args.week)
+        print_moneydog(conn, season, args.week)
         left = conn.execute(
             "SELECT COUNT(*) FROM recheck_flags f JOIN games g ON g.game_id = f.game_id "
             "WHERE g.season = ? AND g.week = ?", (season, args.week),
@@ -345,6 +376,14 @@ def cmd_predict(args) -> int:
                 spent += result.get("_cost_usd", 0.0)
 
         if not args.dry_run:
+            weeks = {
+                (r["season"], r["week"]) for r in conn.execute(
+                    f"SELECT season, week FROM games WHERE game_id IN ({','.join('?' * len(game_ids))})",
+                    game_ids,
+                ).fetchall()
+            }
+            for s_, w_ in sorted(weeks):
+                print_moneydog(conn, s_, w_)
             mtd = predictor.month_spend(conn)
             print(
                 f"\nthis run ${spent:.3f} · month to date ${mtd:.2f} "
@@ -408,12 +447,17 @@ def cmd_spend(args) -> int:
 
 
 def cmd_grade(args) -> int:
-    from . import track
+    from . import moneydog, track
 
     db.init()
     with db.session() as conn:
         n = track.grade(conn, regrade=args.regrade)
         print(f"graded {n} predictions")
+        season = args.season or config.current_season()
+        moneydog.grade(conn, season)
+        md = moneydog.record(conn, season)
+        if md["picks"]:
+            print(f"moneydog  {md['record']}  units {md['units']:+.2f}  ({md['pending']} pending)")
         rec = track.record(conn, season=args.season)
         if not rec["overall"].get("plays"):
             print("nothing graded yet")
@@ -609,6 +653,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="USD this run may spend on top of the week's recheck spend so far (a manual, confirmed run)",
     )
     s.set_defaults(func=cmd_recheck)
+
+    s = sub.add_parser(
+        "moneydog", help="the week's moneyline underdog, from the picks' own numbers (no cost)"
+    )
+    s.add_argument("--season", type=int)
+    s.add_argument("--week", type=int, required=True)
+    s.set_defaults(func=cmd_moneydog)
 
     s = sub.add_parser("predict", help="run the model over one game or a whole slate")
     g = s.add_mutually_exclusive_group(required=True)

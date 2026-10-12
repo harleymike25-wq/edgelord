@@ -38,6 +38,7 @@ export default async function WeekPage({
       <RecordRow
         best={payload.record.best_bets ?? payload.record.overall}
         all={payload.record.overall}
+        moneydog={payload.record.moneydog}
         href="/record"
       />
       {payload.evidence && payload.evidence.plays_decided > 0 && (
