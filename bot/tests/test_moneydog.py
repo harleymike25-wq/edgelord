@@ -62,11 +62,16 @@ AFTER = datetime(2026, 10, 18, 14, 0, tzinfo=EASTERN)
 
 
 class TestSelection:
-    def test_best_value_dog_in_range_is_chosen(self, conn):
-        _game(conn, "2026_06_A_B", "B", "A", -200, 170, 3.0)   # A +170, projected to lose by 3
-        _game(conn, "2026_06_C_D", "D", "C", -160, 135, 6.0)   # C +135, projected to lose by 6
+    def test_most_likely_to_win_is_chosen_over_best_value(self, conn):
+        _game(conn, "2026_06_A_B", "B", "A", -150, 130, 2.0)   # A +130, lose by 2: 44%, ev +0.01
+        _game(conn, "2026_06_C_D", "D", "C", -340, 280, 3.0)   # C +280, lose by 3: 41%, ev +0.56
         md = moneydog.select(conn, 2026, 6, now=BEFORE)
-        assert (md["team"], md["odds"]) == ("A", 170)
+        assert (md["team"], md["odds"]) == ("A", 130)
+
+    def test_equal_chances_go_to_the_better_price(self, conn):
+        _game(conn, "2026_06_A_B", "B", "A", -150, 130, 2.0)
+        _game(conn, "2026_06_C_D", "D", "C", -190, 160, 2.0)
+        assert moneydog.select(conn, 2026, 6, now=BEFORE)["team"] == "C"
 
     def test_prices_outside_the_range_never_qualify(self, conn):
         _game(conn, "2026_06_A_B", "B", "A", -500, 400, 1.0)   # +400 long shot

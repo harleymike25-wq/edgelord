@@ -4,8 +4,13 @@ No model call. Each live pick already carries a projected home margin; a margin
 becomes a win probability through the spread of NFL results around a
 projection (about 13.5 points), and the moneyline gives the market's price for
 the same thing. Among underdogs priced +120 to +300 -- real dogs that still win
-25-45% of the time -- the Moneydog is the one with the best expected return per
-unit at the price the pick was made against.
+25-45% of the time -- the Moneydog is the one most likely to win outright by
+the pick's own projection, ties going to the better price.
+
+It used to take the best expected return instead. The projections lean toward
+underdogs, so "most value" kept landing on the longest dog the bot was too
+optimistic about (+260 to +295 in four of Weeks 1-5, rebuilt). Most likely to
+win leans on that optimism far less and is what a Moneydog is meant to be.
 
 Like every other pick it is one a week whether or not any dog shows value; the
 expected value is stored beside it so a week with no real value reads as one.
@@ -50,7 +55,7 @@ def profit(odds: int, result: str) -> float:
 
 
 def candidates(conn, season: int, week: int) -> list[dict]:
-    """Every qualifying underdog in the week, with its value. Best first."""
+    """Every qualifying underdog in the week, most likely to win first."""
     rows = conn.execute(
         "SELECT g.game_id, g.gameday, g.gametime, g.home_team, g.away_team, "
         "  g.home_score, p.id AS prediction_id, p.projected_margin, f.payload "
@@ -86,7 +91,7 @@ def candidates(conn, season: int, week: int) -> list[dict]:
                 "implied_prob": round(fair_implied(odds, other), 4),
                 "ev": round(p * odds / 100 - (1 - p), 4),
             })
-    return sorted(out, key=lambda c: -c["ev"])
+    return sorted(out, key=lambda c: (-c["win_prob"], -c["odds"]))
 
 
 def current(conn, season: int, week: int) -> dict | None:
