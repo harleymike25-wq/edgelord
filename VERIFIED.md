@@ -515,3 +515,15 @@ differential) in place of `regression_indicators`, and drops
 `prior_season_record`; the stored pack and the site keep both. The prompt's
 "dog at +3.5" best-bet example is replaced by the key-number rule the code
 applies. Applies from the next live pick; not yet run through one.
+
+*Flagged by the owner as a drastic change -- review it, do not assume it worked.*
+What was removed: last season's record block and this season's luck measures.
+What was NOT removed: last season's efficiency, still blended in (55% at Week
+6), and this season's record and point differential. Judge it from Week 6 on,
+against Weeks 1-5, by: the share of underdog picks among edges of 1+ point
+(was 18 of 20), how often "regression" or "luck" still drives a pick, and the
+record and CLV by edge on the site. Undo is one function: drop the
+`model_view(pack)` line in `build_prompt` (bot/edgelord/predict.py), commit
+14e1e7c. Same day, also first applied from Week 6: coin-flip tier (9dfe3dd,
+bf23998), picks switched to the side their own number favours (905f023), and
+key-number best bets held to the thin-evidence bar (a454e0a).
