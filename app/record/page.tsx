@@ -64,7 +64,7 @@ export default async function RecordPage() {
           <h3 className="section">By spread</h3>
           <SpreadRecord games={payload.games} />
 
-          <h3 className="section">Best bets vs leans</h3>
+          <h3 className="section">Best bets, leans and coin flips</h3>
           <SummaryTable rows={record.by_conviction ?? {}} label="Conviction" />
         </>
       )}

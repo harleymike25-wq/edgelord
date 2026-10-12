@@ -106,6 +106,7 @@ const ROW_LABELS: Record<string, string> = {
   total: "Over/unders",
   best_bet: "Best bets",
   lean: "Leans",
+  coin_flip: "Coin flips",
 };
 
 export function SummaryTable({
@@ -379,8 +380,8 @@ export function SpreadRecord({ games }: { games: Game[] }) {
 }
 
 const EDGE_BANDS: { label: string; lo: number; hi: number }[] = [
-  { label: `${COIN_FLIP_EDGE} pt or less (coin flip)`, lo: -Infinity, hi: COIN_FLIP_EDGE },
-  { label: "1.5 to 2.5 pts", lo: COIN_FLIP_EDGE, hi: 2.5 },
+  { label: `Under ${COIN_FLIP_EDGE} pt (coin flip)`, lo: -Infinity, hi: COIN_FLIP_EDGE - 0.01 },
+  { label: `${COIN_FLIP_EDGE} to 2.5 pts`, lo: COIN_FLIP_EDGE - 0.01, hi: 2.5 },
   { label: "3+ pts", lo: 2.5, hi: Infinity },
 ];
 
@@ -388,7 +389,8 @@ const EDGE_BANDS: { label: string; lo: number; hi: number }[] = [
  * Record by how far the projection beat the line.
  *
  * If the model knows something the market does not, bigger edges should win
- * more. Through Week 5 of 2026 they won less: coin flips 31-20, 3+ points 2-3.
+ * more. Through Week 5 of 2026 they did not: a point or less went 31-21,
+ * 3+ points 2-2.
  * This table keeps that question in front of the record rather than behind it.
  */
 export function EdgeRecord({ games }: { games: Game[] }) {

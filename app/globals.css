@@ -460,3 +460,11 @@ table.stacked .cell-u { display: block; font-size: .78rem; }
 /* ---- edge off the line on a pick ---- */
 .edge-note { font-size: .75rem; color: var(--muted, #9aa4ae); text-align: right; margin-top: .2rem; }
 .edge-note.flip { color: var(--warn); }
+
+/* ---- coin flip tier (from 2026 Week 6) ---- */
+.pick.flip { background: #1c1f23; color: var(--dim); border-color: var(--line); border-style: dashed; }
+.coin-flip {
+  display: inline-block; font-size: .62rem; font-weight: 700; letter-spacing: .06em;
+  padding: .12rem .4rem; border-radius: 4px; margin-right: .35rem; vertical-align: middle;
+  color: var(--warn); border: 1px solid #4a3a12; background: #241d0c;
+}

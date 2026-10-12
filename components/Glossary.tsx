@@ -67,11 +67,11 @@ const TERMS: Term[] = [
     ],
   },
   {
-    term: "Best bet vs lean",
+    term: "Best bet, lean, coin flip",
     short: "how much the pick is worth acting on",
     body: [
       "Every game gets a side, because even a coin flip leans fractionally one way and that view is worth recording. What varies is conviction.",
-      "A best bet clears the edge bar: the projection differs from the market by at least 2 points, or 3 when the numbers lean on prior-season data, or the number itself sits wrong against a key value. A lean is an opinion inside the noise — recorded, tracked, but not a recommendation to bet.",
+      "A best bet clears the edge bar: the projection differs from the market by at least 2 points, or 3 when the numbers lean on prior-season data, or the number itself sits wrong against a key value. A lean has a real but modest view: the projection is at least a point off the line, short of the bar. A coin flip is under a point off: the model thinks the line is right and named a side only because every game gets one (labelled from 2026 Week 6; earlier picks were all called leans). Neither is a recommendation to bet.",
       "The two records are kept separately. Best bets are what would actually have been staked; folding leans into the same number would measure picks nobody made.",
     ],
   },

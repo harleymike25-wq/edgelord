@@ -82,9 +82,9 @@ export function clv(n: number | null | undefined): string {
 }
 
 /**
- * An edge at or under a point is inside the noise: the model is saying the line
- * is about right and picking a side because every game gets one. 56 of the
- * first 79 picks of 2026 were this, and they are labelled so.
+ * Under a point off the line is a coin flip: the model is saying the line is
+ * right and picking a side because every game gets one. Mirrors COIN_FLIP_EDGE
+ * in bot/edgelord/predict.py, which sets the stored tier from 2026 Week 6.
  */
 export const COIN_FLIP_EDGE = 1;
 
@@ -94,7 +94,7 @@ export function edge(n: number | null | undefined): string {
 }
 
 export function isCoinFlip(n: number | null | undefined): boolean {
-  return n !== null && n !== undefined && n <= COIN_FLIP_EDGE;
+  return n !== null && n !== undefined && n < COIN_FLIP_EDGE;
 }
 
 export function kickoff(game: Game): string {

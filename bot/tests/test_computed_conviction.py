@@ -49,8 +49,9 @@ class TestEdgeBar:
 
     def test_move_against_the_picked_side_is_never_a_best_bet(self):
         # DAL/NYG: a pick whose own number argued for the other team.
-        assert rate(_pack(9.5), _spread(AWAY, 2.5)) == "lean"
-        assert rate(_pack(9.5), _spread(HOME, -2.5)) == "lean"
+        # Its own edge is negative, so it is a coin flip, never better.
+        assert rate(_pack(9.5), _spread(AWAY, 2.5)) == "coin_flip"
+        assert rate(_pack(9.5), _spread(HOME, -2.5)) == "coin_flip"
 
     def test_under_the_bar_is_a_lean(self):
         assert rate(_pack(9.5), _spread(HOME, 1.5)) == "lean"
@@ -80,7 +81,7 @@ class TestKeyNumbers:
         assert rate(_pack(-6.5), _spread(AWAY, -1.0)) == "best_bet"
 
     def test_half_point_through_a_key_is_not_enough(self):
-        assert rate(_pack(3.5), _spread(AWAY, -0.5)) == "lean"
+        assert rate(_pack(3.5), _spread(AWAY, -0.5)) == "coin_flip"
 
     def test_a_point_that_crosses_nothing_is_a_lean(self):
         assert rate(_pack(4.5), _spread(HOME, 1.0)) == "lean"
@@ -100,8 +101,27 @@ class TestTotals:
     def test_under_two_below_is_a_best_bet(self):
         assert rate(_pack(3.0, 45.5), _total("under", 43.5)) == "best_bet"
 
-    def test_over_projected_below_the_total_is_a_lean(self):
-        assert rate(_pack(3.0, 45.5), _total("over", 43.0)) == "lean"
+    def test_over_projected_below_the_total_is_a_coin_flip(self):
+        assert rate(_pack(3.0, 45.5), _total("over", 43.0)) == "coin_flip"
 
     def test_over_two_above_is_a_best_bet(self):
         assert rate(_pack(3.0, 45.5), _total("over", 47.5)) == "best_bet"
+
+
+class TestCoinFlips:
+    """Under a point off the line: the model named a side only because it must."""
+
+    def test_no_move_is_a_coin_flip(self):
+        assert rate(_pack(3.5), _spread(HOME, 0.0)) == "coin_flip"
+
+    def test_half_point_is_a_coin_flip(self):
+        assert rate(_pack(4.5), _spread(AWAY, -0.5)) == "coin_flip"
+
+    def test_one_point_is_a_lean(self):
+        assert rate(_pack(4.5), _spread(AWAY, -1.0)) == "lean"
+
+    def test_total_half_point_is_a_coin_flip(self):
+        assert rate(_pack(3.0, 45.5), _total("under", 45.0)) == "coin_flip"
+
+    def test_total_one_and_a_half_is_a_lean(self):
+        assert rate(_pack(3.0, 45.5), _total("under", 44.0)) == "lean"

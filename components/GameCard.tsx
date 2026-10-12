@@ -20,16 +20,23 @@ export function PickBadge({ game }: { game: Game }) {
       ? "none"
       : p.conviction === "best_bet"
         ? "best"
-        : p.conviction === "pass" || p.pick_type === "pass"
-          ? "pass"
-          : "lean";
+        : p.conviction === "coin_flip"
+          ? "flip"
+          : p.conviction === "pass" || p.pick_type === "pass"
+            ? "pass"
+            : "lean";
   return <span className={`pick ${tone}`}>{label}</span>;
 }
 
-/** Only best bets get a badge -- a marker on everything marks nothing. */
+/**
+ * Best bets and coin flips get a tag; a lean is the default and needs none.
+ * Coin flips (from 2026 Week 6) are picks under a point off the line: the
+ * model thinks the number is right and named a side because it must.
+ */
 export function ConvictionTag({ conviction }: { conviction?: string }) {
-  if (conviction !== "best_bet") return null;
-  return <span className="best-bet">BEST BET</span>;
+  if (conviction === "best_bet") return <span className="best-bet">BEST BET</span>;
+  if (conviction === "coin_flip") return <span className="coin-flip">COIN FLIP</span>;
+  return null;
 }
 
 export function GameCard({ game }: { game: Game }) {
@@ -77,15 +84,10 @@ export function GameCard({ game }: { game: Game }) {
   );
 }
 
-/** How far the projection beat the line, with coin flips called what they are. */
+/** How far the projection beat the line. The tier itself is the ConvictionTag. */
 export function EdgeNote({ value }: { value?: number | null }) {
   if (value === null || value === undefined) return null;
-  return (
-    <div className={`edge-note ${isCoinFlip(value) ? "flip" : ""}`}>
-      edge {edge(value)}
-      {isCoinFlip(value) ? " · coin flip" : ""}
-    </div>
-  );
+  return <div className={`edge-note ${isCoinFlip(value) ? "flip" : ""}`}>edge {edge(value)}</div>;
 }
 
 /** Every change that flagged the pick, for the game page. */

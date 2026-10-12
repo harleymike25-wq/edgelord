@@ -2,7 +2,7 @@ export type PickType = "spread" | "total" | "pass";
 export type PickResult = "win" | "loss" | "push";
 
 /** How much a pick is worth acting on. Every game gets a side. */
-export type Conviction = "best_bet" | "lean" | "pass";
+export type Conviction = "best_bet" | "lean" | "coin_flip" | "pass";
 
 export interface Prediction {
   id: number;

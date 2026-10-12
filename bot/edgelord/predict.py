@@ -369,6 +369,10 @@ LOW_CONTINUITY = 0.7
 # qualifies: that is where a point is worth the most.
 KEY_NUMBERS = (3.0, 7.0)
 KEY_NUMBER_MIN_EDGE = 1.0
+# Under a point off the line the model is saying the number is right and naming
+# a side only because every game gets one. From 2026 Week 6 those are labelled
+# coin flips, so "lean" means a real if modest view rather than 71% of picks.
+COIN_FLIP_EDGE = 1.0
 
 
 def _thin_evidence(pack: dict) -> bool:
@@ -384,7 +388,7 @@ def _thin_evidence(pack: dict) -> bool:
 
 
 def computed_conviction(pack: dict, result: dict) -> str:
-    """'best_bet' or 'lean', decided by arithmetic rather than by the model.
+    """'best_bet', 'lean' or 'coin_flip', decided by arithmetic, not the model.
 
     Edge is the move off the line toward the picked side, in points. Spread
     picks work in the picked side's terms: the line is the market's margin for
@@ -422,7 +426,9 @@ def computed_conviction(pack: dict, result: dict) -> str:
     else:
         return "lean"
     bar = BEST_BET_EDGE_THIN if thin else BEST_BET_EDGE
-    return "best_bet" if edge >= bar else "lean"
+    if edge >= bar:
+        return "best_bet"
+    return "coin_flip" if edge < COIN_FLIP_EDGE else "lean"
 
 
 def _client() -> anthropic.Anthropic:
