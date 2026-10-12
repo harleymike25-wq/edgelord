@@ -8,7 +8,9 @@ import { HeadToHeadTable, MatchupTables } from "@/components/MatchupTable";
 import { PostMortemPanel } from "@/components/PostMortem";
 import {
   clv,
+  edge,
   finalScore,
+  isCoinFlip,
   kickoff,
   projectedResult,
   signed,
@@ -75,6 +77,14 @@ export default async function GamePage({
               <dt>Confidence</dt>
               <dd>{p.confidence}</dd>
 
+              <dt>Edge</dt>
+              <dd>
+                {edge(p.edge)}
+                {isCoinFlip(p.edge) && (
+                  <span className="source"> · coin flip: the line is about right by its own number</span>
+                )}
+              </dd>
+
               <dt>Projected</dt>
               <dd>
                 {projectedResult(game, p)} · total{" "}
@@ -110,7 +120,10 @@ export default async function GamePage({
                     {r.pick_result} · {units(r.profit_units)}
                   </dd>
                   <dt>CLV</dt>
-                  <dd>{clv(r.clv_points)} pts</dd>
+                  <dd>
+                    {clv(r.clv_points)} pts
+                    <span className="source"> · the line at pick vs the close; positive means we got the better number</span>
+                  </dd>
                 </>
               )}
 

@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { pct, units } from "@/lib/format";
+import { clv, COIN_FLIP_EDGE, pct, units } from "@/lib/format";
 import type { Evidence, Game, Summary } from "@/lib/types";
 
 const tone = (n: number | null | undefined) =>
@@ -8,9 +8,9 @@ const tone = (n: number | null | undefined) =>
 
 /**
  * Both records side by side: best bets are what would have been staked, all
- * picks include every lean. Record and units only -- plays is the record's
- * sum, ROI is units over plays, there are no passes by design, and CLV is not
- * measurable until a second line source exists.
+ * picks include every lean. Closing line value sits beside them because it is
+ * the better test of skill: a record can be luck for a season, but beating the
+ * closing number consistently rarely is.
  */
 export function RecordRow({
   best,
@@ -26,6 +26,7 @@ export function RecordRow({
     <div className="records">
       <RecordTile label="Best bets" s={best} primary />
       <RecordTile label="All picks" s={all} />
+      <ClvTile s={all} />
       {pending > 0 && <div className="records-pending">{pending} pending</div>}
     </div>
   );
@@ -45,6 +46,21 @@ function RecordTile({ label, s, primary = false }: { label: string; s: Summary; 
       <div className="v">
         {s.record || "0-0"}
         <span className={`u ${tone(s.units)}`}>{units(s.units)}</span>
+      </div>
+    </div>
+  );
+}
+
+/** Average points beaten by against the close, and how often it was positive. */
+function ClvTile({ s }: { s: Summary }) {
+  return (
+    <div className="record-tile">
+      <div className="k">Closing line value</div>
+      <div className="v">
+        {s.avg_clv === null ? "—" : `${clv(s.avg_clv)} pts`}
+        <span className="u">
+          {s.clv_positive_pct === null ? "" : `${pct(s.clv_positive_pct)} beat the close`}
+        </span>
       </div>
     </div>
   );
@@ -213,17 +229,25 @@ export function ConfidenceTracking({
   );
 }
 
-type Tally = { w: number; l: number; p: number; u: number };
+type Tally = { w: number; l: number; p: number; u: number; clv: number; clvN: number };
 
 function tally(): Tally {
-  return { w: 0, l: 0, p: 0, u: 0 };
+  return { w: 0, l: 0, p: 0, u: 0, clv: 0, clvN: 0 };
 }
 
-function add(t: Tally, result: string, profit: number) {
+function add(t: Tally, result: string, profit: number, clvPoints?: number | null) {
   if (result === "win") t.w++;
   else if (result === "loss") t.l++;
   else t.p++;
   t.u += profit;
+  if (clvPoints !== null && clvPoints !== undefined) {
+    t.clv += clvPoints;
+    t.clvN++;
+  }
+}
+
+function avgClv(t: Tally): string {
+  return t.clvN ? clv(t.clv / t.clvN) : "—";
 }
 
 function rec(t: Tally): string {
@@ -241,7 +265,7 @@ export function WeeklyRecord({ games }: { games: Game[] }) {
     const r = g.result;
     if (!r || !g.prediction || g.prediction.pick_type === "pass") continue;
     const row = weeks.get(g.week) ?? { all: tally(), best: tally() };
-    add(row.all, r.pick_result, r.profit_units);
+    add(row.all, r.pick_result, r.profit_units, r.clv_points);
     if (g.prediction.conviction === "best_bet") add(row.best, r.pick_result, r.profit_units);
     weeks.set(g.week, row);
   }
@@ -265,6 +289,7 @@ export function WeeklyRecord({ games }: { games: Game[] }) {
           <th>Week</th>
           <th>Record</th>
           <th>Units</th>
+          <th>CLV</th>
           <th>Best bets</th>
           <th>Season</th>
         </tr>
@@ -277,6 +302,7 @@ export function WeeklyRecord({ games }: { games: Game[] }) {
             </td>
             <td>{rec(r.all)}</td>
             <td className={cls(r.all.u)}>{units(r.all.u)}</td>
+            <td className={cls(r.all.clvN ? r.all.clv / r.all.clvN : 0)}>{avgClv(r.all)}</td>
             <td className={r.best.w + r.best.l + r.best.p ? cls(r.best.u) : "dim"}>
               {rec(r.best)}
             </td>
@@ -347,6 +373,62 @@ export function SpreadRecord({ games }: { games: Game[] }) {
             <td className={cls(r.all)}>{cell(r.all)}</td>
           </tr>
         ))}
+      </tbody>
+    </table>
+  );
+}
+
+const EDGE_BANDS: { label: string; lo: number; hi: number }[] = [
+  { label: `${COIN_FLIP_EDGE} pt or less (coin flip)`, lo: -Infinity, hi: COIN_FLIP_EDGE },
+  { label: "1.5 to 2.5 pts", lo: COIN_FLIP_EDGE, hi: 2.5 },
+  { label: "3+ pts", lo: 2.5, hi: Infinity },
+];
+
+/**
+ * Record by how far the projection beat the line.
+ *
+ * If the model knows something the market does not, bigger edges should win
+ * more. Through Week 5 of 2026 they won less: coin flips 31-20, 3+ points 2-3.
+ * This table keeps that question in front of the record rather than behind it.
+ */
+export function EdgeRecord({ games }: { games: Game[] }) {
+  const rows = EDGE_BANDS.map((b) => ({ ...b, t: tally(), picks: 0 }));
+  for (const g of games) {
+    const p = g.prediction;
+    if (!p || p.edge === null || p.edge === undefined) continue;
+    const row = rows.find((b) => p.edge! > b.lo && p.edge! <= b.hi) ?? rows[rows.length - 1];
+    row.picks++;
+    if (g.result) add(row.t, g.result.pick_result, g.result.profit_units, g.result.clv_points);
+  }
+  if (!rows.some((r) => r.picks)) return null;
+
+  const cls = (n: number) => (n > 0 ? "pos" : n < 0 ? "neg" : "");
+  return (
+    <table className="ratings">
+      <thead>
+        <tr>
+          <th>Edge</th>
+          <th>Picks</th>
+          <th>Record</th>
+          <th>Win%</th>
+          <th>Units</th>
+          <th>CLV</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r) => {
+          const decided = r.t.w + r.t.l;
+          return (
+            <tr key={r.label}>
+              <td>{r.label}</td>
+              <td>{r.picks}</td>
+              <td>{rec(r.t)}</td>
+              <td>{decided ? pct(r.t.w / decided) : "—"}</td>
+              <td className={cls(r.t.u)}>{units(r.t.u)}</td>
+              <td className={cls(r.t.clvN ? r.t.clv / r.t.clvN : 0)}>{avgClv(r.t)}</td>
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );

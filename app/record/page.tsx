@@ -1,6 +1,7 @@
 import { Masthead, SyntheticBanner } from "@/components/Chrome";
 import {
   ConfidenceTracking,
+  EdgeRecord,
   EvidenceBadge,
   RecordRow,
   SpreadRecord,
@@ -49,6 +50,13 @@ export default async function RecordPage() {
         <>
           <h3 className="section">By week</h3>
           <WeeklyRecord games={payload.games} />
+
+          <h3 className="section">By edge</h3>
+          <p className="note">
+            How far the projection beat the line. A real edge should win more as
+            it grows; a coin flip is the model saying the line is about right.
+          </p>
+          <EdgeRecord games={payload.games} />
 
           <h3 className="section">Spreads vs over/unders</h3>
           <SummaryTable rows={record.by_market} label="Bet type" />

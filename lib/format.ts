@@ -81,6 +81,22 @@ export function clv(n: number | null | undefined): string {
   return `${n > 0 ? "+" : ""}${n.toFixed(2)}`;
 }
 
+/**
+ * An edge at or under a point is inside the noise: the model is saying the line
+ * is about right and picking a side because every game gets one. 56 of the
+ * first 79 picks of 2026 were this, and they are labelled so.
+ */
+export const COIN_FLIP_EDGE = 1;
+
+export function edge(n: number | null | undefined): string {
+  if (n === null || n === undefined) return "—";
+  return `${n > 0 ? "+" : ""}${n.toFixed(1)} pts`;
+}
+
+export function isCoinFlip(n: number | null | undefined): boolean {
+  return n !== null && n !== undefined && n <= COIN_FLIP_EDGE;
+}
+
 export function kickoff(game: Game): string {
   const day = game.weekday ?? "";
   const date = new Date(`${game.gameday}T12:00:00`);

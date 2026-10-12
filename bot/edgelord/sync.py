@@ -178,10 +178,13 @@ def _game_documents(conn, season: int, week: int | None) -> list[dict]:
                 "key_factors": json.loads(r["key_factors"] or "[]"),
                 "decision_table": json.loads(r["decision_table"] or "[]"),
                 "data_gaps": json.loads(r["data_gaps"] or "[]"),
+                "edge": _pick_edge(r),
             }
         # The pick's inputs changed after it was made and it has not been rerun.
         # Shown on the card so a stale pick never reads as a current one.
-        if r["recheck_reasons"] and r["pick_result"] is None:
+        # A game with no pick yet is flagged too ("no pick yet"), but there is
+        # no pick for the warning to be about.
+        if r["recheck_reasons"] and r["prediction_id"] is not None and r["pick_result"] is None:
             doc["recheck"] = {
                 "checked_at": r["recheck_at"],
                 "reasons": json.loads(r["recheck_reasons"]),
@@ -210,6 +213,32 @@ def _game_documents(conn, season: int, week: int | None) -> list[dict]:
             }
         docs.append(doc)
     return docs
+
+
+def _pick_edge(r: dict) -> float | None:
+    """Points the projection beat the line by, toward the picked side.
+
+    Measured against the number in the pack the pick was built from -- the one
+    the model actually saw -- so it is the edge it claimed, not one recomputed
+    against a line that moved afterwards. At or under a point it is a coin flip.
+    """
+    try:
+        market = json.loads(r["payload"] or "{}").get("market") or {}
+    except (ValueError, TypeError):
+        return None
+    if r["pick_type"] == "spread":
+        line = market.get("current_spread_home")
+        if line is None or r["projected_margin"] is None:
+            return None
+        move = r["projected_margin"] - line
+        return round(move if r["pick_side"] == r["home_team"] else -move, 2)
+    if r["pick_type"] == "total":
+        line = market.get("current_total")
+        if line is None or r["projected_total"] is None:
+            return None
+        diff = r["projected_total"] - line
+        return round(diff if r["pick_side"] == "over" else -diff, 2)
+    return None
 
 
 def _clv_series(conn, season: int) -> list[dict]:

@@ -456,3 +456,7 @@ table.stacked .cell-u { display: block; font-size: .78rem; }
 /* ---- a pick whose inputs changed after it was made ---- */
 .stale { margin: .5rem 0 0; font-size: .8rem; color: var(--warn); }
 .banner ul { margin: .35rem 0 0; padding-left: 1.1rem; }
+
+/* ---- edge off the line on a pick ---- */
+.edge-note { font-size: .75rem; color: var(--muted, #9aa4ae); text-align: right; margin-top: .2rem; }
+.edge-note.flip { color: var(--warn); }

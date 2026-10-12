@@ -2,7 +2,9 @@ import Link from "next/link";
 
 import {
   describePick,
+  edge,
   finalScore,
+  isCoinFlip,
   kickoff,
   units,
 } from "@/lib/format";
@@ -49,6 +51,7 @@ export function GameCard({ game }: { game: Game }) {
         <div>
           <ConvictionTag conviction={p?.conviction} />
           <PickBadge game={game} />
+          <EdgeNote value={p?.edge} />
           {game.result && (
             <div className="conf">{units(game.result.profit_units)}</div>
           )}
@@ -71,6 +74,17 @@ export function GameCard({ game }: { game: Game }) {
 
       {score && <div className="scoreline">Final {score}</div>}
     </Link>
+  );
+}
+
+/** How far the projection beat the line, with coin flips called what they are. */
+export function EdgeNote({ value }: { value?: number | null }) {
+  if (value === null || value === undefined) return null;
+  return (
+    <div className={`edge-note ${isCoinFlip(value) ? "flip" : ""}`}>
+      edge {edge(value)}
+      {isCoinFlip(value) ? " · coin flip" : ""}
+    </div>
   );
 }
 

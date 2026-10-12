@@ -26,6 +26,8 @@ export interface Prediction {
   /** The model's own ledger of what it weighed, including what argued against it. */
   decision_table?: DecisionRow[];
   data_gaps: string[];
+  /** Points the projection beat the line by, toward the pick. At or under 1 is a coin flip. */
+  edge?: number | null;
 }
 
 export interface Result {
