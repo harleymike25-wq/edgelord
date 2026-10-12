@@ -85,6 +85,16 @@ class TestKeyNumbers:
     def test_a_point_that_crosses_nothing_is_a_lean(self):
         assert rate(_pack(4.5), _spread(HOME, 1.0)) == "lean"
 
+    def test_key_number_does_not_bypass_mostly_last_season(self):
+        # 2026 W5 LV +3.5 (home NE -3.5), moved 1.5 toward LV, 60% prior.
+        assert rate(_pack(3.5, prior_weight=0.6), _spread(AWAY, -1.5)) == "lean"
+
+    def test_key_number_does_not_bypass_low_continuity(self):
+        assert rate(_pack(3.5, continuity=0.6), _spread(AWAY, -1.5)) == "lean"
+
+    def test_thin_evidence_still_allows_a_three_point_edge(self):
+        assert rate(_pack(3.5, prior_weight=0.6), _spread(AWAY, -3.0)) == "best_bet"
+
 
 class TestTotals:
     def test_under_two_below_is_a_best_bet(self):

@@ -394,6 +394,7 @@ def computed_conviction(pack: dict, result: dict) -> str:
     projected to win by 3.
     """
     market = pack.get("market") or {}
+    thin = _thin_evidence(pack)
     if result["pick_type"] == "spread":
         spread = market.get("current_spread_home")
         if spread is None:
@@ -406,7 +407,11 @@ def computed_conviction(pack: dict, result: dict) -> str:
         crosses = any(
             line < k <= proj for key in KEY_NUMBERS for k in (key, -key)
         )
-        if crosses and edge >= KEY_NUMBER_MIN_EDGE:
+        # The key-number shortcut is for a sharp number, not a soft one. It used
+        # to skip the thin-evidence bar entirely: 2026 W5 LV +3.5 was promoted
+        # on a 1.5-point edge with 60% of both teams' figures from 2025, and
+        # lost by 24.5.
+        if crosses and edge >= KEY_NUMBER_MIN_EDGE and not thin:
             return "best_bet"
     elif result["pick_type"] == "total":
         total = market.get("current_total")
@@ -416,7 +421,7 @@ def computed_conviction(pack: dict, result: dict) -> str:
         edge = diff if result["pick_side"] == "over" else -diff
     else:
         return "lean"
-    bar = BEST_BET_EDGE_THIN if _thin_evidence(pack) else BEST_BET_EDGE
+    bar = BEST_BET_EDGE_THIN if thin else BEST_BET_EDGE
     return "best_bet" if edge >= bar else "lean"
 
 
