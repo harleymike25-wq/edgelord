@@ -30,11 +30,7 @@ export default async function RecordPage() {
       <Masthead payload={payload} />
       <SyntheticBanner payload={payload} />
 
-      <RecordRow
-        best={record.best_bets ?? record.overall}
-        all={record.overall}
-        moneydog={record.moneydog}
-      />
+      <RecordRow best={record.best_bets ?? record.overall} all={record.overall} />
       {payload.evidence && payload.evidence.plays_decided > 0 && (
         <EvidenceBadge e={payload.evidence} />
       )}

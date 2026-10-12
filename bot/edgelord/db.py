@@ -177,24 +177,6 @@ CREATE TABLE IF NOT EXISTS post_mortems (
 );
 CREATE INDEX IF NOT EXISTS idx_post_mortems_game ON post_mortems(game_id);
 
--- One moneyline underdog per week, chosen by arithmetic (see moneydog.py).
-CREATE TABLE IF NOT EXISTS moneydogs (
-    season         INTEGER NOT NULL,
-    week           INTEGER NOT NULL,
-    game_id        TEXT NOT NULL,
-    team           TEXT NOT NULL,
-    odds           INTEGER NOT NULL,   -- American price at pick time, e.g. 180
-    win_prob       REAL NOT NULL,      -- from the pick's projected margin
-    implied_prob   REAL NOT NULL,      -- the price's, with the vig removed
-    ev             REAL NOT NULL,      -- expected units per unit staked
-    prediction_id  INTEGER REFERENCES predictions(id),
-    picked_at      TEXT NOT NULL,
-    backfilled     INTEGER NOT NULL DEFAULT 0,  -- rebuilt after the fact
-    result         TEXT,               -- 'win' | 'loss' | 'push'
-    profit_units   REAL,
-    PRIMARY KEY (season, week)
-);
-
 -- Live picks whose inputs changed since they were made (see recheck.py).
 -- Rewritten per week on every check; a rerun clears its game's flag.
 CREATE TABLE IF NOT EXISTS recheck_flags (

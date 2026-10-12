@@ -73,8 +73,6 @@ export function GameCard({ game }: { game: Game }) {
         </p>
       )}
 
-      {game.moneydog && <MoneydogLine game={game} />}
-
       {game.recheck && (
         <p className="stale">Inputs changed since this pick: {game.recheck.reasons[0]}
           {game.recheck.reasons.length > 1 ? ` (+${game.recheck.reasons.length - 1} more)` : ""}
@@ -83,19 +81,6 @@ export function GameCard({ game }: { game: Game }) {
 
       {score && <div className="scoreline">Final {score}</div>}
     </Link>
-  );
-}
-
-/** The week's moneyline underdog, on the card of the game it is in. */
-export function MoneydogLine({ game }: { game: Game }) {
-  const m = game.moneydog;
-  if (!m) return null;
-  return (
-    <p className="moneydog">
-      <span className="moneydog-tag">MONEYDOG</span> {m.team} +{m.odds} to win outright ·{" "}
-      {Math.round(m.win_prob * 100)}% by our number vs {Math.round(m.implied_prob * 100)}% priced
-      {m.result ? ` · ${m.result} ${units(m.profit_units)}` : ""}
-    </p>
   );
 }
 

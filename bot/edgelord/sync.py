@@ -93,10 +93,6 @@ def _game_documents(conn, season: int, week: int | None) -> list[dict]:
         params.append(week)
     sql += " ORDER BY g.week, g.gameday, g.gametime"
 
-    dogs = {
-        r["game_id"]: dict(r)
-        for r in conn.execute("SELECT * FROM moneydogs WHERE season = ?", (season,)).fetchall()
-    }
     docs = []
     for row in conn.execute(sql, params).fetchall():
         r = dict(row)
@@ -215,14 +211,6 @@ def _game_documents(conn, season: int, week: int | None) -> list[dict]:
                 "lesson": r["lesson"],
                 "miss": miss,
             }
-        md = dogs.get(r["game_id"])
-        if md:
-            doc["moneydog"] = {
-                k: md[k] for k in (
-                    "team", "odds", "win_prob", "implied_prob", "ev",
-                    "backfilled", "result", "profit_units",
-                )
-            }
         docs.append(doc)
     return docs
 
@@ -277,18 +265,11 @@ def _clv_series(conn, season: int) -> list[dict]:
 
 
 def build_payload(conn, season: int, *, week: int | None = None) -> dict:
-    from . import moneydog
-
-    moneydog.grade(conn, season)
-    record = track.record(conn, season=season)
-    md = moneydog.record(conn, season)
-    md.pop("weeks")
-    record["moneydog"] = md
     return {
         "season": season,
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "games": _game_documents(conn, season, week),
-        "record": record,
+        "record": track.record(conn, season=season),
         "weekly": _clv_series(conn, season),
         # How much the record itself should be believed -- shipped alongside
         # it so the dashboard can never show a hot streak without the caveat.

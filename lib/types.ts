@@ -119,8 +119,6 @@ export interface Game {
   factors?: Factors | null;
   /** Present only on losses: what went wrong and whether it was reasoning or variance. */
   post_mortem?: PostMortem | null;
-  /** Present on the one game a week whose underdog is the Moneydog. */
-  moneydog?: Moneydog | null;
   /** The pick's inputs changed after it was made and it has not been rerun. */
   recheck?: { checked_at: string; reasons: string[] } | null;
 }
@@ -308,29 +306,7 @@ export interface Summary {
   clv_positive_pct: number | null;
 }
 
-/** The week's moneyline underdog, chosen from the pick's own projection. */
-export interface Moneydog {
-  team: string;
-  odds: number;
-  win_prob: number;
-  implied_prob: number;
-  ev: number;
-  backfilled: number;
-  result: "win" | "loss" | "push" | null;
-  profit_units: number | null;
-}
-
-export interface MoneydogRecord {
-  picks: number;
-  record: string;
-  units: number;
-  roi: number | null;
-  pending: number;
-  backfilled_weeks: number[];
-}
-
 export interface RecordBlock {
-  moneydog?: MoneydogRecord;
   /** The headline: only picks the model would actually have staked. */
   best_bets?: Summary;
   overall: Summary;

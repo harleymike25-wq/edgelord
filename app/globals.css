@@ -468,12 +468,3 @@ table.stacked .cell-u { display: block; font-size: .78rem; }
   padding: .12rem .4rem; border-radius: 4px; margin-right: .35rem; vertical-align: middle;
   color: var(--warn); border: 1px solid #4a3a12; background: #241d0c;
 }
-
-/* ---- the Moneydog ---- */
-.moneydog { margin: .5rem 0 0; font-size: .8rem; color: var(--text); }
-.moneydog-tag {
-  display: inline-block; font-size: .62rem; font-weight: 700; letter-spacing: .06em;
-  padding: .12rem .4rem; border-radius: 4px; margin-right: .2rem;
-  background: var(--accent); color: #0f1113;
-}
-.tile-note { font-size: .7rem; color: var(--muted); margin-top: .2rem; }

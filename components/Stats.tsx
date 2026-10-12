@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { clv, COIN_FLIP_EDGE, pct, units } from "@/lib/format";
-import type { Evidence, Game, MoneydogRecord, Summary } from "@/lib/types";
+import type { Evidence, Game, Summary } from "@/lib/types";
 
 const tone = (n: number | null | undefined) =>
   n === null || n === undefined ? "" : n > 0 ? "pos" : n < 0 ? "neg" : "";
@@ -15,12 +15,10 @@ const tone = (n: number | null | undefined) =>
 export function RecordRow({
   best,
   all,
-  moneydog,
   href,
 }: {
   best: Summary;
   all: Summary;
-  moneydog?: MoneydogRecord;
   href?: string;
 }) {
   const pending = all.pending ?? 0;
@@ -29,7 +27,6 @@ export function RecordRow({
       <RecordTile label="Best bets" s={best} primary />
       <RecordTile label="All picks" s={all} />
       <ClvTile s={all} />
-      {moneydog && moneydog.picks > 0 && <MoneydogTile m={moneydog} />}
       {pending > 0 && <div className="records-pending">{pending} pending</div>}
     </div>
   );
@@ -50,24 +47,6 @@ function RecordTile({ label, s, primary = false }: { label: string; s: Summary; 
         {s.record || "0-0"}
         <span className={`u ${tone(s.units)}`}>{units(s.units)}</span>
       </div>
-    </div>
-  );
-}
-
-/** One moneyline underdog a week. Rebuilt weeks are said to be rebuilt. */
-function MoneydogTile({ m }: { m: MoneydogRecord }) {
-  return (
-    <div className="record-tile">
-      <div className="k">Moneydog</div>
-      <div className="v">
-        {m.record || "0-0"}
-        <span className={`u ${tone(m.units)}`}>{units(m.units)}</span>
-      </div>
-      {m.backfilled_weeks.length > 0 && (
-        <div className="tile-note">
-          Wk {m.backfilled_weeks.join(", ")} rebuilt from the picks' own data
-        </div>
-      )}
     </div>
   );
 }
