@@ -59,6 +59,9 @@ export function GameCard({ game }: { game: Game }) {
         <div className="pick-stack">
           <ConvictionTag conviction={p?.conviction} />
           <PickBadge game={game} />
+          {p && p.pick_type !== "pass" && (
+            <div className="conf-pct">{p.confidence}% confidence</div>
+          )}
           {p && <EdgeNote p={p} />}
           {game.result && (
             <div className="conf">{units(game.result.profit_units)}</div>
