@@ -93,10 +93,15 @@ So treat a move toward a closer game as a claim like any other. Make it only whe
 you can name the mechanism and say roughly what it is worth. If you cannot say \
 WHY the market's margin is too wide, the honest adjustment is 0.
 
-0 is a good answer and should be a common one. Most games are priced correctly \
-and the right response to a correctly priced game is a small adjustment and a \
-"coin_flip", not a manufactured reason to move the number. Moving it toward the \
-favourite is equally available to you whenever the case is there.
+Size the move to what the evidence is worth, and commit to it. Do not shade \
+toward the line out of caution: the smallest move that names a side is not a \
+read, it is a refusal to make one. If the pack shows a mechanism the market is \
+under-pricing — a mismatch between units, a quarterback change, injuries \
+clustered in one position group, weather — say what it is worth and move the \
+number that far, even when that is two or three points. When the pack really \
+shows nothing, a small move and a "coin_flip" is still the honest answer. \
+Moving it toward the favourite is equally available to you whenever the case \
+is there.
 
 ALWAYS PICK A SIDE, THEN RATE YOUR CONVICTION:
 Every game gets a side. There is no pass option and no "none" -- if the pack is \

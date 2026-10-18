@@ -533,3 +533,14 @@ coin-flip tier was applied to Week 5 after the fact: 7 leans with an edge under
 a point (PHI, IND, TEN, NYG, LAC, SF, LA) are now `coin_flip`; best bets were
 not touched. Weeks 1-4 stay as recorded (all leans). Every card now shows its
 tier (BEST BET, LEAN or COIN FLIP).
+
+**Prompt asks for conviction (2026-10-18).** The Week 6 Sunday rerun came back
+11 coin flips of 14, every edge exactly 0.5 or 1.0: the prompt called 0 "a
+good answer" that "should be a common one", and the model took the smallest
+move that named a side. That paragraph in `SYSTEM_PROMPT` (bot/edgelord/
+predict.py) now asks it to size the move to the evidence and commit, keeping
+coin flips for games where the pack shows nothing. Tier thresholds and the
+anti-hedging paragraph are unchanged. Applies from the next run; Week 6 live
+picks were made under the old wording. Judge it on: spread of edges, share of
+best bets per slate, and whether underdog share among 1+ point edges climbs
+back toward the old 18 of 20.
