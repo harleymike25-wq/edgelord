@@ -544,3 +544,31 @@ anti-hedging paragraph are unchanged. Applies from the next run; Week 6 live
 picks were made under the old wording. Judge it on: spread of edges, share of
 best bets per slate, and whether underdog share among 1+ point edges climbs
 back toward the old 18 of 20.
+
+## An EPA rating does not beat the line either (2026-10-18)
+
+Asked for more conviction, the obvious source was a number of the bot's own to
+disagree with. A score-based rating had already failed (2026-09-23), so this
+tried play-level efficiency instead: the bot's own blended, opponent-adjusted
+EPA per play, net of defence, turned into points by two numbers fit on
+2017-2021 margins. Rules were committed before the run (8445829,
+`bot/scripts/epa_rating_test.py`): pass only if the line's miss regresses
+positively on the rating's disagreement at 2+ standard errors AND bets 2+
+points off the line win 52.4% at p < 0.05. One look at 2022-2025, 1,087 games:
+
+| | EPA rating | closing line |
+|---|---|---|
+| RMSE vs final margin | 12.97 | **12.36** |
+| MAE vs final margin | 10.01 | **9.49** |
+
+Market weight **-0.20 (se 0.11)**: negative, like the score rating's -0.18.
+ATS was 48.8% betting every disagreement, 48.6% at 2+ points, 47.6% at 3+,
+48.4% at 4+. It took the underdog in 70% of its disagreements. **FAIL** on
+both tests; it does not go into the prediction pack.
+
+That makes five independent tests -- the LLM's number, a score rating, the
+regression thesis, the pre-registered signal search, and now EPA -- all saying
+public data is priced into the closing line. The prompt change asking the
+model for conviction (fa994a7) will produce bigger moves; nothing here says
+bigger moves will cover more often. Grade the best bets it produces against
+the leans before trusting them.
