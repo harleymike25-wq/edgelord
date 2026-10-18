@@ -4,8 +4,11 @@ import {
   describePick,
   edgeOn,
   finalScore,
+  fmt,
   isCoinFlip,
   kickoff,
+  titleCase,
+  totalLean,
   units,
 } from "@/lib/format";
 import type { Game, Prediction } from "@/lib/types";
@@ -63,6 +66,7 @@ export function GameCard({ game }: { game: Game }) {
             <div className="conf-pct">{p.confidence}% confidence</div>
           )}
           {p && <EdgeNote p={p} />}
+          <TotalNote game={game} />
           {game.result && (
             <div className="conf">{units(game.result.profit_units)}</div>
           )}
@@ -92,6 +96,17 @@ export function GameCard({ game }: { game: Game }) {
 export function EdgeNote({ p }: { p: Prediction }) {
   if (p.edge === null || p.edge === undefined) return null;
   return <div className={`edge-note ${isCoinFlip(p.edge) ? "flip" : ""}`}>edge {edgeOn(p)}</div>;
+}
+
+/** The untracked over/under lean beside a spread pick. */
+export function TotalNote({ game }: { game: Game }) {
+  const t = totalLean(game, game.prediction);
+  if (!t) return null;
+  return (
+    <div className="total-note">
+      {t.side ? `${titleCase(t.side)} ${fmt(t.line)}` : `Even at ${fmt(t.line)}`}
+    </div>
+  );
 }
 
 /** Every change that flagged the pick, for the game page. */

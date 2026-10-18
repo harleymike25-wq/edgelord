@@ -14,6 +14,8 @@ import {
   kickoff,
   projectedResult,
   signed,
+  titleCase,
+  totalLean,
   units,
 } from "@/lib/format";
 import { findGame, loadSeason } from "@/lib/data";
@@ -35,6 +37,7 @@ export default async function GamePage({
   const p = game.prediction;
   const r = game.result;
   const score = finalScore(game);
+  const ou = totalLean(game, p);
 
   return (
     <>
@@ -90,6 +93,19 @@ export default async function GamePage({
                 {projectedResult(game, p)} · total{" "}
                 {p.projected_total.toFixed(1)}
               </dd>
+
+              {ou && (
+                <>
+                  <dt>Over/under</dt>
+                  <dd>
+                    {ou.side
+                      ? `${titleCase(ou.side)} ${ou.line}: projects ${ou.projected.toFixed(1)}, ${ou.edge.toFixed(1)} ${ou.side === "over" ? "above" : "below"} the line`
+                      : `No lean: projects ${ou.projected.toFixed(1)}, right on ${ou.line}`}
+                    {ou.side && isCoinFlip(ou.edge) && " (coin flip)"}
+                    <span className="source"> · from the projected total, not tracked in the record</span>
+                  </dd>
+                </>
+              )}
 
               {/* Only a played game has a closing line. Before kickoff this
                   field is the current consensus, and calling it "closing" makes

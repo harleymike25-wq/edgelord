@@ -108,6 +108,30 @@ export function isCoinFlip(n: number | null | undefined): boolean {
   return n !== null && n !== undefined && n < COIN_FLIP_EDGE;
 }
 
+/**
+ * The over/under the projected total implies, alongside a spread pick.
+ *
+ * Display only: worked out here from the model's own total against the
+ * current line, never stored, graded or counted in the record. Null when the
+ * pick already is the total, or there is no line to compare against.
+ */
+export function totalLean(
+  game: Game,
+  p: Prediction | null,
+): { side: "over" | "under" | null; line: number; projected: number; edge: number } | null {
+  if (!p || p.pick_type === "total" || p.pick_type === "pass") return null;
+  if (game.closing_total === null || p.projected_total === null || p.projected_total === undefined) {
+    return null;
+  }
+  const diff = p.projected_total - game.closing_total;
+  return {
+    side: diff > 0 ? "over" : diff < 0 ? "under" : null,
+    line: game.closing_total,
+    projected: p.projected_total,
+    edge: Math.abs(diff),
+  };
+}
+
 export function kickoff(game: Game): string {
   const day = game.weekday ?? "";
   const date = new Date(`${game.gameday}T12:00:00`);
