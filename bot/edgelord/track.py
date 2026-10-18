@@ -216,7 +216,7 @@ def record(conn, *, season: int | None = None) -> dict:
         "overall": {**_summarise(rows), "pending": pending},
         "by_conviction": {
             k: _summarise([r for r in rows if r["conviction"] == k])
-            for k in ("best_bet", "lean")
+            for k in ("best_bet", "lean", "coin_flip")
             if any(r["conviction"] == k for r in rows)
         },
         "by_market": {

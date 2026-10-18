@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { Masthead, SyntheticBanner, WeekNav } from "@/components/Chrome";
 import { GameCard } from "@/components/GameCard";
 import { GlossaryLink } from "@/components/Glossary";
-import { EvidenceBadge, RecordRow } from "@/components/Stats";
 import { gamesForWeek, loadSeason, predictedWeeks } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
@@ -31,18 +30,6 @@ export default async function WeekPage({
     <>
       <Masthead payload={payload} />
       <SyntheticBanner payload={payload} />
-
-      {/* Season record above the slate, always rendered: 0-0 is still the
-          record. Both records, because either alone invites the wrong
-          conclusion. */}
-      <RecordRow
-        best={payload.record.best_bets ?? payload.record.overall}
-        all={payload.record.overall}
-        href="/record"
-      />
-      {payload.evidence && payload.evidence.plays_decided > 0 && (
-        <EvidenceBadge e={payload.evidence} />
-      )}
 
       <WeekNav weeks={weeks} current={n} />
 

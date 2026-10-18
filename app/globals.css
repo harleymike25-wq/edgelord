@@ -107,6 +107,8 @@ nav.tabs a.on { background: var(--panel-2); color: var(--text); border-color: #3
 
 /* ---- season records ---- */
 .records { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; margin-bottom: 1rem; position: relative; }
+.records.tiers { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 520px) { .records.tiers { grid-template-columns: 1fr; } }
 a.strip-link { display: block; }
 .record-tile {
   background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);

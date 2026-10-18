@@ -12,30 +12,40 @@ const tone = (n: number | null | undefined) =>
  * the better test of skill: a record can be luck for a season, but beating the
  * closing number consistently rarely is.
  */
+/** A tier with nothing graded yet still shows, as 0-0: that is its record. */
+const EMPTY: Summary = {
+  plays: 0,
+  passes: 0,
+  record: "0-0",
+  win_pct: null,
+  units: 0,
+  roi: null,
+  avg_clv: null,
+  clv_positive_pct: null,
+};
+
+/** One tile per conviction tier, then the season as a whole. */
 export function RecordRow({
-  best,
+  tiers,
   all,
-  href,
 }: {
-  best: Summary;
+  tiers: Record<string, Summary>;
   all: Summary;
-  href?: string;
 }) {
   const pending = all.pending ?? 0;
-  const body = (
-    <div className="records">
-      <RecordTile label="Best bets" s={best} primary />
-      <RecordTile label="All picks" s={all} />
-      <ClvTile s={all} />
-      {pending > 0 && <div className="records-pending">{pending} pending</div>}
-    </div>
-  );
-  return href ? (
-    <Link href={href} className="strip-link">
-      {body}
-    </Link>
-  ) : (
-    body
+  return (
+    <>
+      <div className="records tiers">
+        <RecordTile label="Best bets" s={tiers.best_bet ?? EMPTY} primary />
+        <RecordTile label="Leans" s={tiers.lean ?? EMPTY} />
+        <RecordTile label="Coin flips" s={tiers.coin_flip ?? EMPTY} />
+      </div>
+      <div className="records">
+        <RecordTile label="All picks" s={all} />
+        <ClvTile s={all} />
+        {pending > 0 && <div className="records-pending">{pending} pending</div>}
+      </div>
+    </>
   );
 }
 
