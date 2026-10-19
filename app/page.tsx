@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
-
 import { Masthead, SyntheticBanner } from "@/components/Chrome";
+import { WeekView } from "@/components/WeekView";
 import { lastLoadError, loadSeason, predictedWeeks } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
@@ -15,8 +14,13 @@ export default async function Home() {
   // lands on a slate with no picks, an empty record strip and sixteen "not
   // picked yet" cards, which reads as a broken dashboard rather than as a
   // pending job. `predictedWeeks` is newest-first, so [0] is the latest.
+  //
+  // Rendered here rather than redirected to /week/N: a redirect leaves the
+  // week number in history, bookmarks and the router cache, so Back or a saved
+  // link replays whatever week was newest at the time. `/` must always mean
+  // the latest.
   const week = predictedWeeks(payload.games)[0];
-  if (week) redirect(`/week/${week}`);
+  if (week) return <WeekView payload={payload} week={week} />;
 
   return (
     <>

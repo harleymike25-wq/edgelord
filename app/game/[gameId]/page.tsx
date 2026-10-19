@@ -18,7 +18,7 @@ import {
   totalLean,
   units,
 } from "@/lib/format";
-import { findGame, loadSeason } from "@/lib/data";
+import { findGame, loadSeason, predictedWeeks } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +42,10 @@ export default async function GamePage({
   return (
     <>
       <Masthead payload={payload} />
-      <Link href={`/week/${game.week}`} className="back">
+      <Link
+        href={game.week === predictedWeeks(payload.games)[0] ? "/" : `/week/${game.week}`}
+        className="back"
+      >
         ← Week {game.week}
       </Link>
       <SyntheticBanner payload={payload} />

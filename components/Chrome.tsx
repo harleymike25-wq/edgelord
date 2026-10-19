@@ -60,8 +60,10 @@ export function WeekNav({
   if (weeks.length < 2) return null;
   return (
     <nav className="tabs">
-      {weeks.map((w) => (
-        <Link key={w} href={`/week/${w}`} className={w === current ? "on" : ""}>
+      {/* `weeks` is newest-first; the newest links to home so it is never
+          pinned to a number in history. */}
+      {weeks.map((w, i) => (
+        <Link key={w} href={i === 0 ? "/" : `/week/${w}`} className={w === current ? "on" : ""}>
           Wk {w}
         </Link>
       ))}
