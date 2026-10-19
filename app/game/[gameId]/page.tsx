@@ -105,6 +105,12 @@ export default async function GamePage({
                       ? `${titleCase(ou.side)} ${ou.line}: projects ${ou.projected.toFixed(1)}, ${ou.edge.toFixed(1)} ${ou.side === "over" ? "above" : "below"} the line`
                       : `No lean: projects ${ou.projected.toFixed(1)}, right on ${ou.line}`}
                     {ou.side && isCoinFlip(ou.edge) && " (coin flip)"}
+                    {ou.outcome && game.final && (
+                      <span className={`ou-result ${ou.outcome}`}>
+                        {" "}· {ou.outcome === "win" ? "hit" : ou.outcome === "loss" ? "missed" : "push"},{" "}
+                        {game.final.home + game.final.away} scored
+                      </span>
+                    )}
                     <span className="source"> · from the projected total, not tracked in the record</span>
                   </dd>
                 </>

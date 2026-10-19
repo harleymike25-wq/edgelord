@@ -98,13 +98,19 @@ export function EdgeNote({ p }: { p: Prediction }) {
   return <div className={`edge-note ${isCoinFlip(p.edge) ? "flip" : ""}`}>edge {edgeOn(p)}</div>;
 }
 
-/** The untracked over/under lean beside a spread pick. */
+const OUTCOME_MARK = { win: "✓", loss: "✗", push: "push" } as const;
+
+/**
+ * The untracked over/under lean beside a spread pick, green or red once the
+ * final is in. Graded here from the score, so it never needs a separate step.
+ */
 export function TotalNote({ game }: { game: Game }) {
   const t = totalLean(game, game.prediction);
   if (!t) return null;
   return (
-    <div className="total-note">
+    <div className={`total-note ${t.outcome ?? ""}`}>
       {t.side ? `${titleCase(t.side)} ${fmt(t.line)}` : `Even at ${fmt(t.line)}`}
+      {t.outcome && ` ${OUTCOME_MARK[t.outcome]}`}
     </div>
   );
 }

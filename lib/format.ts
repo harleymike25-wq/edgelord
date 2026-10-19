@@ -118,18 +118,32 @@ export function isCoinFlip(n: number | null | undefined): boolean {
 export function totalLean(
   game: Game,
   p: Prediction | null,
-): { side: "over" | "under" | null; line: number; projected: number; edge: number } | null {
+): {
+  side: "over" | "under" | null;
+  line: number;
+  projected: number;
+  edge: number;
+  /** Graded against the final score once there is one; null before then. */
+  outcome: "win" | "loss" | "push" | null;
+} | null {
   if (!p || p.pick_type === "total" || p.pick_type === "pass") return null;
   if (game.closing_total === null || p.projected_total === null || p.projected_total === undefined) {
     return null;
   }
   const diff = p.projected_total - game.closing_total;
+  const side = diff > 0 ? "over" : diff < 0 ? "under" : null;
   return {
-    side: diff > 0 ? "over" : diff < 0 ? "under" : null,
+    side,
     line: game.closing_total,
     projected: p.projected_total,
     edge: Math.abs(diff),
+    outcome: side && game.final ? gradeTotal(side, game.final.home + game.final.away, game.closing_total) : null,
   };
+}
+
+function gradeTotal(side: "over" | "under", actual: number, line: number): "win" | "loss" | "push" {
+  if (actual === line) return "push";
+  return (actual > line) === (side === "over") ? "win" : "loss";
 }
 
 export function kickoff(game: Game): string {

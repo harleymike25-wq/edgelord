@@ -488,3 +488,9 @@ table.stacked .cell-u { display: block; font-size: .78rem; }
   font-size: .72rem; color: var(--muted, #9aa4ae); text-align: right;
   border-top: 1px solid var(--line); padding-top: .2rem; margin-top: .1rem;
 }
+.total-note.win  { color: var(--win); font-weight: 600; }
+.total-note.loss { color: var(--loss); font-weight: 600; }
+.total-note.push { color: var(--push); }
+.ou-result.win  { color: var(--win); font-weight: 600; }
+.ou-result.loss { color: var(--loss); font-weight: 600; }
+.ou-result.push { color: var(--push); }
