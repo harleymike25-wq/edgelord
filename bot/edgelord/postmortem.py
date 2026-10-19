@@ -334,19 +334,20 @@ game simply landed the other way. Those demand opposite responses and \
 conflating them is how a model talks itself into chasing noise.
 
 A single NFL game carries roughly 13 points of standard error against any \
-projection. So:
+projection, so a small miss CAN be variance. But the size of the miss does not \
+decide the verdict, and "it was within a standard error" is not by itself a \
+reason for one: nearly every loss is. Judge the argument on its merits. \
+"Variance" has to be earned: it means each claim the pick rested on still \
+looks sound after seeing the result, and nothing you played down looks like \
+what decided the game.
 
-- A pick that lost by half a point, or lost while your projection was within a \
-few points of the real margin, is almost always variance. Say so plainly and \
-recommend changing nothing. "The process was fine and the result was bad" is a \
-complete and correct answer.
-- A pick that lost by three touchdowns, or where your projection was 20+ points \
-from the actual margin, is evidence something in the reasoning was actually \
-broken. Find the specific thing.
+You are grading your own work, which pulls toward excusing it. Read the \
+write-up as a sceptical outsider would: would a sharp bettor have accepted \
+this argument before kickoff?
 
-Do not manufacture a lesson to seem useful. Do not treat one game as proof of \
-a pattern. If the honest answer is that you would make the same pick again, \
-that is the answer.
+Do not manufacture a lesson to seem useful, and do not treat one game as proof \
+of a pattern. But do not reach for variance to avoid naming a flaw that is \
+visible in the write-up itself.
 
 ONE EXCEPTION, AND IT IS NOT NEGOTIABLE. If \
 `contradicted_own_projection` is true, the pick needed the side to beat a \
@@ -377,11 +378,24 @@ wrong. `factors.argued_against_pick` lists the rows that pointed the other way \
 and got outvoted; if one of those turned out to be the thing that decided the \
 game, it was underweighted, and that is the most useful finding available.
 
+A THIRD RULE. If a row in `argued_against_pick` was weighted "slight" or \
+"none" and the result is consistent with it deciding the game -- the losing \
+side was missing several starters, its running game or line was gutted, the \
+other quarterback was clearly better -- that factor was underweighted. The \
+verdict is "thesis_wrong", not variance. Say which row it was.
+
+A FOURTH RULE. Check the evidence each heavy `argued_for_pick` row stands on. \
+A claim resting on a small sample -- a quarterback with under about 200 \
+dropbacks, three or four games of a slump, figures mostly from last season -- \
+is a weak claim. If the pick depended on it and lost, the verdict is \
+"thesis_wrong" unless the write-up gave a reason beyond that sample. The \
+commonest case: arguing a backup quarterback is "not clearly worse" than the \
+starter on a handful of snaps.
+
 SET `verdict` TO ONE OF:
 
-- "thesis_right_variance" -- the argument was sound, the projection was close, \
-the game landed badly. Expect this often; it is the honest verdict for most \
-losses.
+- "thesis_right_variance" -- every claim the pick rested on held up, none of \
+the rules above applies, and the game simply landed the other way.
 - "thesis_wrong" -- the central claim about what the market was mispricing was \
 simply incorrect, and the game showed why.
 - "bad_input" -- the reasoning followed correctly from a figure that was itself \

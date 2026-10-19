@@ -572,3 +572,15 @@ public data is priced into the closing line. The prompt change asking the
 model for conviction (fa994a7) will produce bigger moves; nothing here says
 bigger moves will cover more often. Grade the best bets it produces against
 the leans before trusting them.
+
+**Post-mortems no longer default to variance (2026-10-18).** All six Week 6
+losses came back "thesis_right_variance": the prompt only counted a loss as
+broken past a three-touchdown miss or a 20-point projection error, so nothing
+smaller could be anything else. PHI +3 was the clearest case: it argued Tanner
+McKee was "not clearly worse" than Hurts on 46 dropbacks and rated the
+Barkley/Dickerson/Shipley absences "slight", then lost by 11. The prompt now
+judges the argument rather than the miss size, and adds two rules: a factor
+played down that looks like it decided the game, and a pick resting on a small
+sample, are "thesis_wrong". Regenerated, all six flipped to thesis_wrong --
+the other extreme, so watch whether it ever returns variance again. Post-mortems
+stay display-only and never reach the prediction prompt.
