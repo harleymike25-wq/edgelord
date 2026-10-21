@@ -384,3 +384,49 @@ class TestAFailedReviewKeepsTheLastOne:
         postmortem.store(conn, row, {}, {"verdict": "thesis_wrong", "explanation": "a", "lesson": "a"})
         postmortem.store(conn, row, {}, {"verdict": "data_gap", "explanation": "b", "lesson": "b"})
         assert conn.execute("SELECT verdict FROM post_mortems").fetchone()[0] == "data_gap"
+
+
+class TestBoxScore:
+    """The box score has to tell a side that was out-played from one that lost the bounces."""
+
+    def _pbp(self):
+        import polars as pl
+
+        def play(team, opp, epa, success, interception=0, st=0, play_type="pass"):
+            return {"game_id": "G", "posteam": team, "defteam": opp,
+                    "play_type": play_type, "epa": epa, "success": success,
+                    "interception": interception, "fumble_lost": 0,
+                    "special_teams_play": st}
+
+        rows = [
+            # AAA moves the ball cleanly but throws two picks.
+            play(AWAY, HOME, 0.4, 1), play(AWAY, HOME, 0.4, 1),
+            play(AWAY, HOME, -4.0, 0, interception=1),
+            play(AWAY, HOME, -4.0, 0, interception=1),
+            # BBB grinds.
+            play(HOME, AWAY, 0.0, 0), play(HOME, AWAY, 0.1, 1),
+            # A BBB punt that AAA returns well: bad for BBB.
+            play(HOME, AWAY, -3.0, 0, st=1, play_type="punt"),
+        ]
+        return pl.DataFrame(rows)
+
+    def test_picked_side_won_the_snaps_and_lost_the_turnovers(self):
+        b = postmortem.box_score(self._pbp(), "G", "spread", AWAY, HOME, AWAY)
+        assert b["picked"]["turnovers"] == 2
+        assert b["turnover_margin"] == -2
+        assert b["edge_epa_per_play_ex_turnovers"] == pytest.approx(0.35)
+        assert b["edge_epa_per_play"] < 0
+        # The punt counts for the returner and against the punter.
+        assert b["edge_special_teams_epa"] == pytest.approx(6.0)
+
+    def test_signs_flip_with_the_picked_side(self):
+        b = postmortem.box_score(self._pbp(), "G", "spread", HOME, HOME, AWAY)
+        assert b["turnover_margin"] == 2
+        assert b["edge_epa_per_play_ex_turnovers"] == pytest.approx(-0.35)
+
+    def test_game_without_plays_is_none(self):
+        assert postmortem.box_score(self._pbp(), "X", "spread", HOME, HOME, AWAY) is None
+
+    def test_total_reports_both_teams(self):
+        b = postmortem.box_score(self._pbp(), "G", "total", "over", HOME, AWAY)
+        assert set(b) == {HOME, AWAY}

@@ -276,6 +276,79 @@ def compute_miss(row: dict, final_injuries: list[dict] | None = None) -> dict:
     return miss
 
 
+def _team_box(plays, team: str) -> dict:
+    """One team's offence and special teams in one game, from play-by-play."""
+    import polars as pl
+
+    off = plays.filter(
+        (pl.col("posteam") == team)
+        & pl.col("play_type").is_in(["pass", "run"])
+        & pl.col("epa").is_not_null()
+    )
+    giveaway = (pl.col("interception") == 1) | (pl.col("fumble_lost") == 1)
+    clean = off.filter(~giveaway)
+    st = plays.filter(
+        (pl.col("special_teams_play") == 1) & pl.col("epa").is_not_null()
+    )
+    # Special-teams EPA is credited to the possessing side; net it so a punt
+    # return touchdown counts for the returner as well as against the punter.
+    st_epa = (
+        st.filter(pl.col("posteam") == team)["epa"].sum()
+        - st.filter(pl.col("defteam") == team)["epa"].sum()
+    )
+
+    def r(x, n=3):
+        return None if x is None else round(float(x), n)
+
+    return {
+        "plays": off.height,
+        "epa_per_play": r(off["epa"].mean()) if off.height else None,
+        # Efficiency with giveaway plays removed: how well the team moved the
+        # ball when it held on to it. The gap between this and the line above
+        # is what turnovers cost.
+        "epa_per_play_ex_turnovers": r(clean["epa"].mean()) if clean.height else None,
+        "success_rate": r(off["success"].mean()) if off.height else None,
+        "turnovers": int(off.filter(giveaway).height),
+        "special_teams_epa": r(st_epa, 1),
+    }
+
+
+def box_score(pbp, game_id: str, pick_type: str, side: str,
+              home: str, away: str) -> dict | None:
+    """How the game was actually played, so a review can tell football from bounces.
+
+    A spread loss where the picked side out-gained its opponent per play and
+    lost the turnover battle is a different loss from one where it was
+    out-played snap for snap. The score cannot tell those apart; this can.
+    None when the game has no play-by-play yet.
+    """
+    import polars as pl
+
+    plays = pbp.filter(pl.col("game_id") == game_id)
+    if plays.is_empty():
+        return None
+    h, a = _team_box(plays, home), _team_box(plays, away)
+    if pick_type != "spread":
+        return {home: h, away: a}
+
+    picked, other = (h, a) if side == home else (a, h)
+
+    def diff(key):
+        x, y = picked.get(key), other.get(key)
+        return None if x is None or y is None else round(x - y, 3)
+
+    return {
+        "picked": {"team": side, **picked},
+        "opponent": {"team": away if side == home else home, **other},
+        # Positive means the picked side did better.
+        "edge_epa_per_play": diff("epa_per_play"),
+        "edge_epa_per_play_ex_turnovers": diff("epa_per_play_ex_turnovers"),
+        "edge_success_rate": diff("success_rate"),
+        "turnover_margin": other["turnovers"] - picked["turnovers"],
+        "edge_special_teams_epa": diff("special_teams_epa"),
+    }
+
+
 LOSS_SQL = """
     SELECT p.id, p.game_id, p.pick_type, p.pick_side, p.line_at_pick,
            p.confidence, p.conviction, p.projected_margin, p.projected_total,
@@ -379,18 +452,42 @@ and got outvoted; if one of those turned out to be the thing that decided the \
 game, it was underweighted, and that is the most useful finding available.
 
 A THIRD RULE. If a row in `argued_against_pick` was weighted "slight" or \
-"none" and the result is consistent with it deciding the game -- the losing \
-side was missing several starters, its running game or line was gutted, the \
-other quarterback was clearly better -- that factor was underweighted. The \
-verdict is "thesis_wrong", not variance. Say which row it was.
+"none" and `box_score` shows it deciding the game -- the side it hurt was \
+out-played on efficiency where that factor bites: missing starters, a gutted \
+running game or line, a clearly worse quarterback -- that factor was \
+underweighted. The verdict is "thesis_wrong", not variance. Say which row it \
+was. A final score alone is not enough to show this; if the picked side won \
+the efficiency battle, the factor did not decide the game.
 
 A FOURTH RULE. Check the evidence each heavy `argued_for_pick` row stands on. \
 A claim resting on a small sample -- a quarterback with under about 200 \
 dropbacks, three or four games of a slump, figures mostly from last season -- \
-is a weak claim. If the pick depended on it and lost, the verdict is \
-"thesis_wrong" unless the write-up gave a reason beyond that sample. The \
-commonest case: arguing a backup quarterback is "not clearly worse" than the \
-starter on a handful of snaps.
+is a weak claim. If the pick depended on it AND `box_score` shows that claim \
+failing in this game (the backup quarterback's offence was in fact clearly \
+worse, the efficiency edge did not show up), the verdict is "thesis_wrong". \
+Early in a season almost every figure is a small sample, so a thin sample \
+whose claim held up on the field is not by itself a broken thesis -- say it \
+was thin, and judge the game.
+
+THE BOX SCORE. `box_score` is computed from the play-by-play of this game, so \
+it is the one record you have of how the game was actually played. Use it as \
+the main evidence for the verdict, in both directions:
+- If the picked side lost `edge_epa_per_play_ex_turnovers` and \
+`edge_success_rate` -- it was out-played on the snaps where it held the ball \
+-- the market's view of the matchup was the right one. Look first at the unit \
+the write-up leaned on hardest. That is "thesis_wrong" unless an exception \
+below applies.
+- If the picked side won both of those and the loss came from \
+`turnover_margin` (two or more against it) or `edge_special_teams_epa` (worse \
+than about -4), the football went the way the pick said and the bounces did \
+not. Turnovers and kicks are close to random from game to game. Unless rule \
+one, two or three applies, that is "thesis_right_variance", and saying so is \
+the right answer, not a dodge.
+- Mixed or near zero (efficiency edges within about 0.05 EPA a play and 3 \
+points of success rate) means the game was roughly even. Decide on the \
+argument and the rules above, and say the box score did not settle it.
+Quote the numbers you use. If `box_score` is null, say the game could not be \
+checked and do not guess at how it was played.
 
 SET `verdict` TO ONE OF:
 
@@ -411,9 +508,9 @@ far apart in standard-error terms, and how much the pick missed covering by.
 2. A factor audit. Take the two or three heaviest rows in \
 `argued_for_pick` and say whether the result is consistent with each one or \
 cuts against it. Then name the strongest row in `argued_against_pick` and say \
-whether it looks like the thing that decided the game. Use only what you are \
-given: you have the final score and the computed miss, not the play-by-play, \
-so do not invent drives, turnovers or injuries.
+whether it looks like the thing that decided the game. Check each against \
+`box_score`. Use only what you are given: you have team totals from the \
+play-by-play, not individual drives, so do not invent drives or injuries.
 3. The verdict and the evidence for it. No hedging filler.
 
 `lesson` is one or two sentences, under 40 words, stating what to do \
@@ -605,6 +702,17 @@ def _final_injuries(seasons: set[int]) -> dict[tuple, list[dict]] | None:
     return out
 
 
+def _pbp(seasons: set[int]):
+    """Play-by-play for the seasons under review, or None if unavailable."""
+    if not seasons:
+        return None
+    try:
+        from .sources import nflverse
+        return nflverse.pbp(sorted(seasons))
+    except Exception:  # noqa: BLE001 -- a missing feed must not stop the review
+        return None
+
+
 def generate(conn, *, season: int | None = None, week: int | None = None,
              regenerate: bool = False, with_model: bool = True,
              budget: float | None = None, limit: int | None = None,
@@ -626,12 +734,17 @@ def generate(conn, *, season: int | None = None, week: int | None = None,
            "failed": 0, "cost_usd": 0.0, "errors": []}
 
     injuries = _final_injuries({r["season"] for r in rows})
+    pbp = _pbp({r["season"] for r in rows})
 
     for row in rows:
         final = None
         if injuries is not None:
             final = injuries.get((row["season"], row["week"]), [])
         miss = compute_miss(row, final)
+        miss["box_score"] = None if pbp is None else box_score(
+            pbp, row["game_id"], row["pick_type"], row["pick_side"],
+            row["home_team"], row["away_team"],
+        )
         narrative = None
 
         if with_model:
