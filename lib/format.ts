@@ -55,6 +55,49 @@ export function projectedResult(game: Game, p: Prediction): string {
   return `${winner} by ${fmt(Math.abs(margin))} · ${score}`;
 }
 
+/**
+ * What the market itself predicts: who wins, by how much, and how likely, from
+ * the spread and the moneylines with the vig taken out. Once the final is in,
+ * `winner` and `outcome` say whether the market's favourite actually won --
+ * a straight-up call, separate from whether it covered.
+ *
+ * `closing_spread_home` is positive when the home team is favoured. A zero
+ * spread falls back to the moneyline to name a favourite.
+ */
+export function marketCall(game: Game): {
+  favourite: string | null;
+  margin: number;
+  winProb: number | null;
+  winner: string | null;
+  outcome: "win" | "loss" | "push" | null;
+} | null {
+  const s = game.closing_spread_home;
+  if (s === null || s === undefined) return null;
+  const hp = impliedProb(game.home_moneyline);
+  const ap = impliedProb(game.away_moneyline);
+  const homeProb = hp !== null && ap !== null ? hp / (hp + ap) : null;
+
+  const homeFav = s > 0 || (s === 0 && homeProb !== null && homeProb > 0.5);
+  const awayFav = s < 0 || (s === 0 && homeProb !== null && homeProb < 0.5);
+  const favourite = homeFav ? game.home_team : awayFav ? game.away_team : null;
+  const winProb =
+    homeProb === null || favourite === null ? null : homeFav ? homeProb : 1 - homeProb;
+
+  let winner: string | null = null;
+  let outcome: "win" | "loss" | "push" | null = null;
+  if (game.final) {
+    const margin = game.final.home - game.final.away;
+    winner = margin > 0 ? game.home_team : margin < 0 ? game.away_team : null;
+    if (favourite) outcome = winner === null ? "push" : winner === favourite ? "win" : "loss";
+  }
+  return { favourite, margin: Math.abs(s), winProb, winner, outcome };
+}
+
+function impliedProb(ml: number | null | undefined): number | null {
+  if (ml === null || ml === undefined || ml === 0) return null;
+  return ml < 0 ? -ml / (-ml + 100) : 100 / (ml + 100);
+}
+
 export function signed(n: number): string {
   return `${n > 0 ? "+" : n < 0 ? "-" : "+"}${fmt(Math.abs(n))}`;
 }

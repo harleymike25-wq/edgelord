@@ -7,6 +7,7 @@ import {
   fmt,
   isCoinFlip,
   kickoff,
+  marketCall,
   titleCase,
   totalLean,
   units,
@@ -58,6 +59,7 @@ export function GameCard({ game }: { game: Game }) {
             {kickoff(game)}
             {game.divisional ? " · divisional" : ""}
           </div>
+          <MarketNote game={game} />
         </div>
         <div className="pick-stack">
           <ConvictionTag conviction={p?.conviction} />
@@ -111,6 +113,33 @@ export function TotalNote({ game }: { game: Game }) {
     <div className={`total-note ${t.outcome ?? ""}`}>
       {t.side ? `${titleCase(t.side)} ${fmt(t.line)}` : `Even at ${fmt(t.line)}`}
       {t.outcome && ` ${OUTCOME_MARK[t.outcome]}`}
+    </div>
+  );
+}
+
+/**
+ * The market's own prediction of who wins, in words, graded straight-up once
+ * the final is in. Shown beside the pick so the bot's call can be read
+ * against the number it is betting into.
+ */
+export function MarketNote({ game }: { game: Game }) {
+  const m = marketCall(game);
+  if (!m) return null;
+  const by = m.margin === 0 ? "" : ` by ${fmt(m.margin)}`;
+  const chance = m.winProb === null ? "" : ` · ${Math.round(m.winProb * 100)}% chance`;
+
+  if (!game.final) {
+    return (
+      <div className="market-note">
+        {m.favourite ? `Market says ${m.favourite} wins${by}${chance}` : "Market says it's a toss-up"}
+      </div>
+    );
+  }
+  const result =
+    m.winner === null ? "tie" : `${m.winner} won ${OUTCOME_MARK[m.outcome ?? "push"]}`;
+  return (
+    <div className={`market-note ${m.outcome ?? ""}`}>
+      {m.favourite ? `Market said ${m.favourite}${by}` : "Market said toss-up"} · {result}
     </div>
   );
 }

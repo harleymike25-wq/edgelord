@@ -64,7 +64,7 @@ def _game_documents(conn, season: int, week: int | None) -> list[dict]:
     sql = """
         SELECT g.game_id, g.season, g.week, g.game_type, g.gameday, g.weekday,
                g.gametime, g.home_team, g.away_team, g.home_score, g.away_score,
-               g.spread_line, g.total_line, g.stadium, g.roof, g.referee,
+               g.spread_line, g.total_line, g.home_moneyline, g.away_moneyline, g.stadium, g.roof, g.referee,
                g.div_game, g.home_coach, g.away_coach,
                p.id AS prediction_id, p.model, p.created_at, p.run_label,
                p.pick_type, p.pick_side, p.conviction, p.line_at_pick,
@@ -114,6 +114,8 @@ def _game_documents(conn, season: int, week: int | None) -> list[dict]:
             "away_coach": r["away_coach"],
             "closing_spread_home": r["spread_line"],
             "closing_total": r["total_line"],
+            "home_moneyline": r["home_moneyline"],
+            "away_moneyline": r["away_moneyline"],
             "final": (
                 {"home": r["home_score"], "away": r["away_score"]}
                 if r["home_score"] is not None

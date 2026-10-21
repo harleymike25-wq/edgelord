@@ -109,6 +109,9 @@ export interface Game {
   away_coach: string | null;
   closing_spread_home: number | null;
   closing_total: number | null;
+  /** American odds from the schedule feed; absent on documents synced before they were added. */
+  home_moneyline?: number | null;
+  away_moneyline?: number | null;
   final: { home: number; away: number } | null;
   prediction: Prediction | null;
   result: Result | null;
