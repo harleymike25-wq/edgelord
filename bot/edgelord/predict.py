@@ -183,7 +183,7 @@ source and its absence is expected.
 
 YOUR OUTPUT:
 - `headline` is one sentence under 20 words: the call and the reason the market \
-is wrong, with no statistics in it. It is what someone reads while scrolling a \
+is wrong, with no statistics or analytics terms in it. It is what someone reads while scrolling a \
 slate of sixteen games, so it should carry the argument, not just the side. \
 "Take the Jets plus the points" says nothing; "Baltimore is priced on a healthy \
 Lamar Jackson who has not shown up in a month" says everything.
@@ -201,12 +201,18 @@ the evidence to the number.
   (3) THE CASE AGAINST. The strongest argument for the other side, and the \
 specific thing that would kill the pick. If a move to 13 would end it, say so.
 
-  Write so it can be read at a glance. A wall of prose with figures buried \
-mid-sentence is unreadable — carry at most two or three numbers per paragraph \
-and put the rest in `key_factors`, which is displayed separately. Prefer "an \
-8% sack rate" to "a sack rate of 8.1% (26 sacks on 321 dropbacks) against a \
-league average of 6.9%". Round: 0.086 EPA/play is "+0.09", 77.4% is "77%". \
-Anything past two significant figures is noise dressed as precision.
+  WRITE IT FOR A FOOTBALL FAN, NOT AN ANALYST. The readers want the story of \
+the game: who has the edge and why, in the language of football -- players by \
+name, the matchup that decides it, what is at stake, what the injury really \
+means on the field. Translate the numbers into what they look like on a \
+Sunday: not "-0.12 EPA per dropback" but "he has been holding the ball and \
+taking sacks for a month"; not "a 0.08 EPA edge" but "their receivers should \
+run free against that secondary". No analytics jargon in the headline or the \
+paragraph -- no EPA, success rate, CPOE, dropbacks, PROE, continuity -- and at \
+most one plain number per paragraph (a record, a score, a sack count). The \
+exact figures belong in `key_factors` and `decision_table`, which are shown \
+separately. Be confident and vivid, with some bite; no hedging filler and no \
+stock phrases like "on any given Sunday".
 - `confidence` is 1-100 and should be honestly calibrated. Most NFL sides are close \
 to a coin flip against the spread; a confidence above 65 should be rare and \
 earned. Do not inflate it to seem decisive.

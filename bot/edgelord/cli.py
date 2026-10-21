@@ -481,6 +481,85 @@ def cmd_postmortem(args) -> int:
     return 0
 
 
+def cmd_shadow(args) -> int:
+    """The blind predictor, beside the live one. Writes only to shadow_predictions."""
+    from . import predict as predictor
+    from . import shadow
+    from .features.build import FeatureBuilder, slate_game_ids, split_played
+
+    db.init()
+    season = args.season or config.current_season()
+    with db.session() as conn:
+        refresh_lines(conn, season)
+        game_ids = [args.game] if args.game else slate_game_ids(conn, season, args.week)
+        game_ids, played = split_played(conn, game_ids)
+        for g in played:
+            print(f"skip {g}: already played")
+        if not game_ids:
+            print("nothing to do")
+            return 0
+
+        base = shadow.baselines(season)
+        builder = FeatureBuilder(sorted({season - 1, season}))
+        spent = 0.0
+        for game_id in game_ids:
+            pack = builder.build(conn, game_id)
+            if args.dry_run:
+                prompt = shadow.build_prompt(pack, base.get(game_id))
+                print(f"===== {game_id} ({len(prompt):,} chars) =====")
+                print(prompt if args.verbose else prompt[:4000] + "\n...")
+                continue
+            features_id = builder.store(conn, game_id, pack)
+            try:
+                out = shadow.predict(pack, conn, base.get(game_id), effort=args.effort)
+            except predictor.BudgetExceeded as e:
+                print(f"stopping: {e}", file=sys.stderr)
+                break
+            except Exception as e:  # noqa: BLE001
+                print(f"{game_id}: FAILED {e}", file=sys.stderr)
+                continue
+            calc = shadow.assemble(pack, out, base.get(game_id))
+            sid = shadow.store(conn, game_id, features_id, out, calc)
+            conn.commit()
+            spent += out.get("_cost_usd") or 0.0
+            print(
+                f"{game_id:<20} {calc['winner'] or 'tie':<4} by {abs(calc['projected_margin']):>4.1f} "
+                f"({calc['home_win_prob']:.0%} home)  elo {calc['baseline_margin']:+.1f}  "
+                f"line {calc['line_home']}  -> {calc['pick_side']} {calc['tier']} "
+                f"edge {calc['edge']}  [s#{sid}]"
+            )
+            if args.verbose:
+                print(f"  {out['headline']}\n  {out['paragraph']}\n")
+        if not args.dry_run:
+            print(f"\nthis run ${spent:.3f} · month to date ${predictor.month_spend(conn):.2f}")
+    return 0
+
+
+def cmd_shadow_report(args) -> int:
+    from . import shadow
+
+    db.init()
+    season = args.season or config.current_season()
+    with db.session() as conn:
+        rep = shadow.report(conn, season)
+
+    def rec(b):
+        n = b["w"] + b["l"]
+        pct = f"{b['w'] / n:.1%}" if n else "--"
+        return f"{b['w']}-{b['l']}-{b['p']} ({pct})"
+
+    print(f"{season}: {rep['games']} finished games with a shadow pick\n")
+    print(f"{'':<22}{'shadow':<22}{'live':<22}")
+    for key, label in (("winners", "named the winner"), ("ats", "against the spread"),
+                       ("dog", "  underdog picks"), ("fav", "  favourite picks")):
+        print(f"{label:<22}{rec(rep['shadow'][key]):<22}{rec(rep['live'][key]):<22}")
+    print(f"{'avg line value (pts)':<22}{str(rep['shadow']['clv']):<22}{str(rep['live']['clv']):<22}")
+    print(f"\nmarket favourite won: {rec(rep['market_favourite_winners'])}")
+    for tier, b in sorted(rep["shadow"]["by_tier"].items()):
+        print(f"shadow {tier:<10} {rec(b)}")
+    return 0
+
+
 def cmd_report(args) -> int:
     from . import report
 
@@ -652,6 +731,22 @@ def build_parser() -> argparse.ArgumentParser:
     )
     s.add_argument("--limit", type=int, help="stop after this many losses")
     s.set_defaults(func=cmd_postmortem)
+
+    s = sub.add_parser(
+        "shadow",
+        help="blind predictor: who wins from the factors, the line compared last (separate table)",
+    )
+    s.add_argument("--week", type=int)
+    s.add_argument("--season", type=int)
+    s.add_argument("--game", help="one game_id instead of the slate")
+    s.add_argument("--effort", choices=["low", "medium", "high", "max"])
+    s.add_argument("--dry-run", action="store_true", help="print the prompt, call nothing")
+    s.add_argument("--verbose", action="store_true")
+    s.set_defaults(func=cmd_shadow)
+
+    s = sub.add_parser("shadow-report", help="shadow picks graded beside the live ones")
+    s.add_argument("--season", type=int)
+    s.set_defaults(func=cmd_shadow_report)
 
     s = sub.add_parser("report", help="render the slate report")
     s.add_argument("--week", type=int, required=True)

@@ -632,3 +632,39 @@ Six computed numbers now say public data is priced into the closing line.
 None of these goes into the prediction pack as a source of edge. Next in the
 set: efficiency and matchup models, then a learned blend of all of them --
 graded on the same card, with the same pre-registration.
+
+## Shadow test: who wins first, the line last (pre-registered 2026-10-21)
+
+The live predictor starts from the market spread and says how far to move it,
+so every pick is a nudge to the line. The shadow predictor (`bot/edgelord/
+shadow.py`) runs beside it on the same games and reverses the order: the model
+sees the pack with the line removed, scores a fixed checklist of ten factors in
+points (team strength from Elo, quarterback, availability, pass, run, pressure,
+form, rest/travel, weather, home field), code sums them into the margin, and
+only then compares to the line. Tier: best bet when the sum is 2+ points past
+the line AND the QB-adjusted Elo is 1+ past it on the same side; lean at 1+
+with the Elo on the same side; otherwise coin flip. Shadow picks sit in their
+own table and never reach the record or the site.
+
+Context it starts from: the live record's profit is an underdog run. Live dogs
+33-26-2 (+4.0u), favourites 13-15-2 (-3.2u); league-wide dogs covered 48 of 87
+in Weeks 1-6, so taking every dog would have matched the live dogs.
+
+RULES, fixed before the first shadow pick:
+1. From 2026 Week 7, every slate the live predictor runs, the shadow runs too,
+   before kickoff. Graded by `edgelord shadow-report` on finished games.
+2. No verdict before 8 weeks of shadow picks (about 110 games). Weekly numbers
+   are reported, not acted on.
+3. The shadow replaces the live predictor only if, over those weeks, it beats
+   the live picks on BOTH spread record and average closing-line value, and
+   names winners no worse than 2 points below the market favourite. Otherwise
+   it stays a shadow or is dropped.
+4. Every report splits underdog and favourite picks, so an underdog run is
+   visible for what it is.
+
+**Write-ups for fans (2026-10-21).** From Week 7 the headline and paragraph,
+live and shadow, are written for a football fan: players, matchups, stakes, no
+analytics terms and at most one plain number per paragraph. Figures stay in
+the factor tags and decision table. Only the prose instructions changed; the
+reasoning and tier rules did not. If Week 7's edges or tiers look different
+from Weeks 5-6, this is the first suspect.

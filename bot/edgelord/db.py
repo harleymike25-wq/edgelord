@@ -145,6 +145,36 @@ CREATE TABLE IF NOT EXISTS predictions (
 );
 CREATE INDEX IF NOT EXISTS idx_pred_game ON predictions(game_id, created_at);
 
+-- The shadow predictor (edgelord/shadow.py): the model predicts the game with
+-- the line hidden, code sums its factor points into a margin and only then
+-- compares to the line. Kept apart from `predictions` so it can never reach
+-- the official record, rechecks or the site.
+CREATE TABLE IF NOT EXISTS shadow_predictions (
+    id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+    game_id               TEXT NOT NULL,
+    features_id           INTEGER REFERENCES features(id),
+    created_at            TEXT NOT NULL,
+    model                 TEXT,
+    projected_margin      REAL,       -- home margin: the sum of the factor points
+    home_win_prob         REAL,
+    projected_total       REAL,
+    winner                TEXT,
+    baseline_margin       REAL,       -- QB-adjusted Elo, home margin
+    line_home             REAL,       -- spread when picked, positive = home favoured
+    total_line            REAL,
+    pick_side             TEXT,
+    edge                  REAL,       -- margin vs line, toward the pick
+    baseline_edge         REAL,       -- the Elo's, toward the same side
+    tier                  TEXT,       -- 'best_bet' | 'lean' | 'coin_flip'
+    factors               TEXT,       -- JSON {factor: {favors, points, evidence, reading}}
+    headline              TEXT,
+    paragraph             TEXT,
+    baseline_disagreement TEXT,
+    cost_usd              REAL,
+    superseded_by         INTEGER REFERENCES shadow_predictions(id)
+);
+CREATE INDEX IF NOT EXISTS idx_shadow_game ON shadow_predictions(game_id, created_at);
+
 CREATE TABLE IF NOT EXISTS results (
     prediction_id  INTEGER PRIMARY KEY REFERENCES predictions(id),
     game_id        TEXT NOT NULL,
