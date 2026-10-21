@@ -584,3 +584,51 @@ played down that looks like it decided the game, and a pick resting on a small
 sample, are "thesis_wrong". Regenerated, all six flipped to thesis_wrong --
 the other extreme, so watch whether it ever returns variance again. Post-mortems
 stay display-only and never reach the prediction prompt.
+
+**Post-mortems judged on a box score (2026-10-21).** The 2026-10-18 rules
+could force thesis_wrong four ways and nothing could earn variance. Each loss
+now carries a box score computed from the play-by-play (0042a30): EPA per play
+with and without giveaways, success rate, turnover margin and special teams,
+picked side against opponent. Out-played on clean snaps is thesis_wrong; won
+the snaps and lost on turnovers or kicks is variance; a thin sample only
+counts against a pick when the game showed the claim failing. Week 6 box
+scores before any rerun: SEA (+0.19 EPA/play clean, -3 turnovers) and IND
+(+0.14, -2, -12 special teams) won the football; ATL, PHI and LAC were
+out-played by 0.29-0.32 a play. Not yet regenerated.
+
+## Elo and a quarterback-adjusted Elo do not beat the line (2026-10-21)
+
+First two of a planned set of computed models (Elo, QB-adjusted, efficiency,
+matchup, machine learning, simulation) meant to give the bot its own view of
+who wins before it looks at the spread. Both tuned on 2017-2021 only; rules
+committed before the run (8149569, `bot/scripts/model_holdout.py`). Two tests
+per model: WINNER (straight-up accuracy within 2.0 points of the line's
+favourite AND Brier within 0.010 of the line's) and SPREAD (the EPA test's
+bar: market weight 2+ se above zero AND 2+ point disagreements winning 52.4%
+at p < 0.05). One look at 2022-2025, 1,084 games:
+
+| | straight-up | Brier | RMSE vs margin | market weight | ATS 2+ off |
+|---|---|---|---|---|---|
+| closing line | **67.5%** | **0.2105** | **12.36** | -- | -- |
+| QB-adjusted Elo | 65.2% | 0.2191 | 12.72 | -0.04 (se 0.13) | 254-252, 50.2% |
+| Elo | 64.4% | 0.2227 | 12.90 | -0.11 (se 0.11) | 273-280, 49.4% |
+| least-squares rating | 63.9% | 0.2250 | 12.90 | -0.18 (se 0.12) | 248-270, 47.9% |
+
+All three **FAIL** both tests. The QB model missed the winner bar by 0.3
+points (2.3 behind the line) and passed its Brier half. When it named a
+different winner from the line it was right 42% of the time (65 of 154).
+
+What it does show: the quarterback adjustment is real. It took a third of the
+distance between Elo and the line off the margin error (12.90 to 12.72) and
+cut wrong-winner disagreements from 182 to 154, out of sample. It is the
+first computed number here that is plainly better than the score ratings,
+though still not as good as the market.
+
+2026 to date, 92 games, a live look graded by nothing: QB-adjusted Elo 64.1%
+straight-up to the line's 62.0%, 39-27 ATS at 1+ point. Eleven weeks of that
+would still be noise against four seasons saying otherwise.
+
+Six computed numbers now say public data is priced into the closing line.
+None of these goes into the prediction pack as a source of edge. Next in the
+set: efficiency and matchup models, then a learned blend of all of them --
+graded on the same card, with the same pre-registration.
