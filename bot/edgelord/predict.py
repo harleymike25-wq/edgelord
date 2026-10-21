@@ -683,8 +683,12 @@ def _line_at_pick(pack: dict, result: dict) -> tuple[float | None, int | None]:
 
 
 def store(conn, game_id: str, features_id: int | None, pack: dict, result: dict,
-          *, run_label: str) -> int:
-    """Persist a prediction. Supersedes any earlier live prediction for this game."""
+          *, run_label: str, conviction: str | None = None) -> int:
+    """Persist a prediction. Supersedes any earlier live prediction for this game.
+
+    `conviction` overrides the computed tier, for a predictor that sets its own
+    by different rules (the blind predictor's needs the Elo to agree).
+    """
     line, price = _line_at_pick(pack, result)
 
     cur = conn.execute(
@@ -701,7 +705,7 @@ def store(conn, game_id: str, features_id: int | None, pack: dict, result: dict,
             run_label,
             result["pick_type"],
             result["pick_side"],
-            computed_conviction(pack, result),
+            conviction or computed_conviction(pack, result),
             result.get("conviction", "lean"),
             line,
             price,

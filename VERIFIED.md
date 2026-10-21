@@ -668,3 +668,13 @@ analytics terms and at most one plain number per paragraph. Figures stay in
 the factor tags and decision table. Only the prose instructions changed; the
 reasoning and tier rules did not. If Week 7's edges or tiers look different
 from Weeks 5-6, this is the first suspect.
+
+**Week 7 made official instead of shadowed (2026-10-21).** At the owner's call
+the blind predictor makes the official Week 7 picks (`edgelord shadow --week 7
+--official`, run label `blind`) rather than running beside the live one. Its
+picks go in `predictions` with its own tier, so they count in the record and
+show on the site. Each write-up opens with one plain line tying the blind call
+to the line ("Our number: CHI by 1. The market: CHI by 1.5. The pick: NE
++1.5."). One week of picks says nothing on its own; the old predictor is
+untouched and can be run again next week. Note that a recheck rerun would use
+the old predictor for that game.

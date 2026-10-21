@@ -115,3 +115,29 @@ class TestReport:
         assert rep["shadow"]["ats"] == {"w": 1, "l": 0, "p": 0}
         assert rep["shadow"]["dog"]["w"] == 1
         assert rep["market_favourite_winners"] == {"w": 0, "l": 1, "p": 0}
+
+
+class TestOfficialPick:
+    def test_pick_against_its_own_winner_says_so_plainly(self):
+        # Line BBB -3; factors say BBB by 1: the pick is AAA +3 though BBB wins.
+        pack = _pack(3.0)
+        out = _out(team_strength=1.0)
+        out["headline"] = "Bears edge it at home."
+        calc = shadow.assemble(pack, out, {"projected_home": 0.5})
+        res = shadow.to_prediction(pack, out, calc)
+        assert res["pick_side"] == AWAY
+        assert res["paragraph"].startswith(
+            "Our number: BBB by 1. The market: BBB by 3. The pick: AAA +3.")
+        assert res["headline"] == "Bears edge it at home, but closer than the market thinks: AAA +3"
+        assert res["conviction"] == calc["tier"]
+        assert 50 < res["confidence"] < 60
+
+    def test_favourite_shows_minus_and_factors_rank_by_points(self):
+        pack = _pack(3.0)
+        out = _out(team_strength=4.0, home_field=1.5, quarterback=2.5)
+        calc = shadow.assemble(pack, out, {"projected_home": 5.0})
+        res = shadow.to_prediction(pack, out, calc)
+        assert res["paragraph"].startswith("Our number: BBB by 8. The market: BBB by 3. The pick: BBB -3.")
+        assert res["key_factors"][0] == "Team strength: BBB +4"
+        assert [r["weight"] for r in res["decision_table"][:3]] == ["decisive", "strong", "moderate"]
+        assert res["headline"] == "h"

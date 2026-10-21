@@ -510,8 +510,10 @@ def cmd_shadow(args) -> int:
                 print(prompt if args.verbose else prompt[:4000] + "\n...")
                 continue
             features_id = builder.store(conn, game_id, pack)
+            label = "blind" if args.official else "shadow"
             try:
-                out = shadow.predict(pack, conn, base.get(game_id), effort=args.effort)
+                out = shadow.predict(pack, conn, base.get(game_id), effort=args.effort,
+                                     run_label=label)
             except predictor.BudgetExceeded as e:
                 print(f"stopping: {e}", file=sys.stderr)
                 break
@@ -519,7 +521,15 @@ def cmd_shadow(args) -> int:
                 print(f"{game_id}: FAILED {e}", file=sys.stderr)
                 continue
             calc = shadow.assemble(pack, out, base.get(game_id))
-            sid = shadow.store(conn, game_id, features_id, out, calc)
+            if args.official:
+                # The official pick for this game: same table, record and site as
+                # the live predictor, with the blind predictor's own tier.
+                result = shadow.to_prediction(pack, out, calc)
+                sid = predictor.store(conn, game_id, features_id, pack, result,
+                                      run_label=label, conviction=calc["tier"])
+                conn.execute("DELETE FROM recheck_flags WHERE game_id = ?", (game_id,))
+            else:
+                sid = shadow.store(conn, game_id, features_id, out, calc)
             conn.commit()
             spent += out.get("_cost_usd") or 0.0
             print(
@@ -742,6 +752,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--effort", choices=["low", "medium", "high", "max"])
     s.add_argument("--dry-run", action="store_true", help="print the prompt, call nothing")
     s.add_argument("--verbose", action="store_true")
+    s.add_argument(
+        "--official", action="store_true",
+        help="store as the official pick (predictions table, record, site) instead of a shadow",
+    )
     s.set_defaults(func=cmd_shadow)
 
     s = sub.add_parser("shadow-report", help="shadow picks graded beside the live ones")

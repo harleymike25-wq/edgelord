@@ -268,9 +268,10 @@ ALSO RETURN:
 defences, pace and weather.
 - `headline`: one line, under 15 words: who wins and the reason, with no \
 statistics or analytics terms.
-- `paragraph`: two short paragraphs. First, who wins and the two or three \
-factors that decide it. Second, where you differ from the computed baseline \
-(`baseline.projected_home_margin`) and why -- or that you agree.
+- `paragraph`: three short paragraphs separated by blank lines. (1) Who wins \
+and why, in a sentence or two. (2) The matchup or player that decides it. \
+(3) What could flip it. Readers see this; the computed baseline means nothing \
+to them, so do not mention it here -- that goes in `baseline_disagreement`.
 
 WRITE THE HEADLINE AND PARAGRAPH FOR A FOOTBALL FAN, NOT AN ANALYST: players \
 by name, the matchup that decides it, what the injury means on the field. \
@@ -411,8 +412,79 @@ def assemble(pack: dict, out: dict, baseline: dict | None) -> dict:
     }
 
 
+_WEIGHT_BY_POINTS = ((3.0, "decisive"), (2.0, "strong"), (1.0, "moderate"), (0.01, "slight"))
+
+
+def _weight(points: float) -> str:
+    return next((w for cut, w in _WEIGHT_BY_POINTS if points >= cut), "none")
+
+
+def _fmt(n: float) -> str:
+    return f"{n:g}"
+
+
+def to_prediction(pack: dict, out: dict, calc: dict) -> dict:
+    """The blind call in the shape the live `predict.store` and the site expect.
+
+    The model named a winner without seeing the line, so its headline can call
+    the Bears while the pick is the Patriots plus the points. The paragraph
+    opens with one plain line tying the two together, and the headline says
+    so when the pick is the side it expects to lose.
+    """
+    label = {k: lab for k, lab, _ in CHECKLIST}
+    rows = []
+    for k in FACTOR_KEYS:
+        f = out["factors"][k]
+        pts = max(0.0, float(f["points"]))
+        rows.append({
+            "factor": label[k], "reading": f["reading"],
+            "favors": f["favors"] if pts > 0 else "neither",
+            "weight": _weight(pts), "_points": pts,
+        })
+    rows.sort(key=lambda r: -r["_points"])
+    key_factors = [f"{r['factor']}: {r['favors']} +{_fmt(round(r['_points'], 1))}"
+                   for r in rows if r["_points"] > 0][:5]
+    for r in rows:
+        r.pop("_points")
+
+    home, away = pack["game"]["home_team"], pack["game"]["away_team"]
+    margin, pick, winner = calc["projected_margin"], calc["pick_side"], calc["winner"]
+    line_home = calc["line_home"]
+    side_line = None if line_home is None else (line_home if pick == home else -line_home)
+    # Book notation: the side laying points shows minus.
+    shown = "pk" if not side_line else f"{-side_line:+g}"
+
+    ours = f"{winner} by {_fmt(round(abs(margin), 1))}" if winner else "a dead heat"
+    if not line_home:
+        market = "a pick'em"
+    else:
+        market = f"{home if line_home > 0 else away} by {_fmt(abs(line_home))}"
+    lead = f"Our number: {ours}. The market: {market}. The pick: {pick} {shown}."
+
+    headline = out["headline"].rstrip(".")
+    if winner and pick != winner:
+        headline += f", but closer than the market thinks: {pick} {shown}"
+
+    return {
+        "pick_type": "spread",
+        "pick_side": pick,
+        # Chance the pick covers, from the edge over the line.
+        "confidence": round(100 * win_prob(calc["edge"] or 0.0)),
+        "projected_margin": margin,
+        "projected_total": out["projected_total"],
+        "headline": headline,
+        "paragraph": f"{lead}\n\n{out['paragraph']}",
+        "key_factors": key_factors,
+        "decision_table": rows,
+        "conviction": calc["tier"],
+        "_model": out.get("_model"),
+        "_cost_usd": out.get("_cost_usd"),
+    }
+
+
 def predict(pack: dict, conn, baseline: dict | None, *, model: str | None = None,
-            effort: str | None = None, budget: float | None = None) -> dict:
+            effort: str | None = None, budget: float | None = None,
+            run_label: str = "shadow") -> dict:
     """One blind call. Same spend guard and usage ledger as the live predictor."""
     model = model or config.MODEL
     effort = effort or config.PREDICT_EFFORT
@@ -440,7 +512,7 @@ def predict(pack: dict, conn, baseline: dict | None, *, model: str | None = None
         response = client.messages.create(**request)
 
     usage = predictor._sum_usage(response)
-    cost = predictor._record(conn, pack["game"]["game_id"], "shadow", response.model, usage)
+    cost = predictor._record(conn, pack["game"]["game_id"], run_label, response.model, usage)
     if response.stop_reason == "refusal":
         raise RuntimeError(f"model and fallback both declined for {pack['game']['game_id']}")
     text = next((b.text for b in response.content if b.type == "text"), None)
