@@ -70,10 +70,13 @@ FACTOR_KEYS = tuple(k for k, _, _ in CHECKLIST)
 # 13.5 points; the QB-adjusted Elo fit 13.5 on 2017-2021.
 SIGMA = 13.5
 
-# Tiers, fixed before the first shadow pick. `edge` is the factor sum's margin
-# against the line toward the picked side; `baseline_edge` the QB-adjusted
-# Elo's, toward the same side.
-BEST_BET_EDGE = 2.0
+# Tiers. `edge` is the factor sum's margin against the line toward the picked
+# side; `baseline_edge` the QB-adjusted Elo's, toward the same side. The
+# best-bet bar was 2.0, carried over from the live predictor, whose edges are
+# nudges off the line. A blind sum lands 2.5-4 points off the line as a matter
+# of course, so 2.0 made 9 of Week 7's 14 picks best bets. Raised to 4.0 at the
+# owner's call on 2026-10-25, before any of those games kicked off.
+BEST_BET_EDGE = 4.0
 BEST_BET_BASELINE_EDGE = 1.0
 LEAN_EDGE = 1.0
 

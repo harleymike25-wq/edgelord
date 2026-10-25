@@ -66,10 +66,15 @@ class TestAssemble:
         assert 0.5 < calc["home_win_prob"] < 0.7
 
     def test_best_bet_needs_both_numbers_past_the_line(self):
-        # Line BBB -3. Factors say BBB by 6 (edge 3), Elo says BBB by 4.5 (edge 1.5).
-        calc = shadow.assemble(_pack(3.0), _out(team_strength=6.0), {"projected_home": 4.5})
+        # Line BBB -3. Factors say BBB by 7 (edge 4), Elo says BBB by 4.5 (edge 1.5).
+        calc = shadow.assemble(_pack(3.0), _out(team_strength=7.0), {"projected_home": 4.5})
         assert (calc["pick_side"], calc["edge"], calc["baseline_edge"], calc["tier"]) == (
-            HOME, 3.0, 1.5, "best_bet")
+            HOME, 4.0, 1.5, "best_bet")
+
+    def test_three_points_off_the_line_is_a_lean(self):
+        # Blind sums sit 2.5-4 points off the line routinely; 3 is not a best bet.
+        calc = shadow.assemble(_pack(3.0), _out(team_strength=6.0), {"projected_home": 4.5})
+        assert (calc["edge"], calc["tier"]) == (3.0, "lean")
 
     def test_elo_on_the_other_side_caps_it_at_coin_flip(self):
         calc = shadow.assemble(_pack(3.0), _out(team_strength=6.0), {"projected_home": 1.0})

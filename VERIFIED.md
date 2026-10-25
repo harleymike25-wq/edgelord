@@ -678,3 +678,15 @@ to the line ("Our number: CHI by 1. The market: CHI by 1.5. The pick: NE
 +1.5."). One week of picks says nothing on its own; the old predictor is
 untouched and can be run again next week. Note that a recheck rerun would use
 the old predictor for that game.
+
+**Blind best-bet bar raised to 4 points (2026-10-25).** The blind predictor
+carried over the live predictor's 2-point best-bet bar, but its edges are not
+nudges off the line: Week 7's sums landed 2.5-3.75 points off it, and 9 of 14
+picks were best bets (5 of them underdogs, NYG +10 among them). At the owner's
+call `BEST_BET_EDGE` in bot/edgelord/shadow.py is now 4.0; the Elo-agreement
+and lean rules are unchanged. Applied before any affected game kicked off: the
+8 unplayed Week 7 best bets were re-tiered to lean, then the 12 unplayed games
+were rerun on the blind predictor with fresh lines and injuries. NE @ CHI
+(played Thursday) keeps its best_bet; PIT @ NO (underway in London) was not
+touched. The two scored rating tests (2026-09-23, 2026-10-18) lost at 2-4
+points off the line, so a 4-point bar is about frequency, not proof of an edge.
