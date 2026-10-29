@@ -332,6 +332,15 @@ export type Verdict =
   | "established";
 
 /** How much the record itself should be believed. */
+/** Learned corrections to the blind predictor's factor points (bot/edgelord/calibration.py). */
+export interface Calibration {
+  n_games: number;
+  multipliers: Record<string, number>;
+  factors: Record<string, { games: number; avg_points: number; multiplier: number }>;
+  rmse_raw: number | null;
+  rmse_calibrated: number | null;
+}
+
 export interface Evidence {
   verdict: Verdict;
   /** 0-100, dominated by sample size and closing line value. */
@@ -367,6 +376,7 @@ export interface SeasonPayload {
   record: RecordBlock;
   weekly: WeeklyPoint[];
   evidence?: Evidence;
+  calibration?: Calibration;
   /** True when the data is placeholder output from scripts/seed_dev_snapshot.py. */
   synthetic: boolean;
   /** Which backend served this payload. */

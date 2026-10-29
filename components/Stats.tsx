@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { clv, COIN_FLIP_EDGE, pct, units } from "@/lib/format";
-import type { Evidence, Game, Summary } from "@/lib/types";
+import type { Calibration, Evidence, Game, Summary } from "@/lib/types";
 
 const tone = (n: number | null | undefined) =>
   n === null || n === undefined ? "" : n > 0 ? "pos" : n < 0 ? "neg" : "";
@@ -107,6 +107,63 @@ export function EvidenceBadge({ e }: { e: Evidence }) {
         ))}
       </ul>
     </details>
+  );
+}
+
+const FACTOR_LABELS: Record<string, string> = {
+  team_strength: "Team strength",
+  quarterback: "Quarterback",
+  availability: "Injuries and availability",
+  pass_game: "Pass offense vs pass defense",
+  run_game: "Run offense vs run defense",
+  pressure: "Pressure vs protection",
+  form: "Recent form",
+  rest_travel: "Rest and travel",
+  weather: "Weather",
+  home_field: "Home field",
+};
+
+/**
+ * What the blind predictor has learned about its own factor points. A
+ * correction below x1 means the factor has been worth less on the field than
+ * the model scored it. Pulled toward x1 until the games are many, so a single
+ * week shows up as a nudge.
+ */
+export function FactorCorrections({ c }: { c: Calibration }) {
+  return (
+    <>
+      <table className="ratings">
+        <thead>
+          <tr>
+            <th>Factor</th>
+            <th>Games</th>
+            <th>Avg points</th>
+            <th>Correction</th>
+          </tr>
+        </thead>
+        <tbody>
+          {/* Firestore does not keep map order; show the checklist's. */}
+          {Object.keys(FACTOR_LABELS)
+            .filter((k) => c.factors[k])
+            .map((k) => [k, c.factors[k]] as const)
+            .map(([k, f]) => (
+            <tr key={k}>
+              <td>{FACTOR_LABELS[k] ?? k}</td>
+              <td>{f.games}</td>
+              <td>{f.avg_points.toFixed(2)}</td>
+              <td className={f.multiplier < 1 ? "neg" : f.multiplier > 1 ? "pos" : ""}>
+                ×{f.multiplier.toFixed(2)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="note">
+        Learned from {c.n_games} graded blind picks. Margin error {c.rmse_raw} points
+        before the corrections and {c.rmse_calibrated} after, measured on the same games,
+        so the second figure flatters itself.
+      </p>
+    </>
   );
 }
 

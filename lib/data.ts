@@ -4,6 +4,7 @@ import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
 import type {
+  Calibration,
   Evidence,
   Game,
   RatingsPayload,
@@ -57,6 +58,7 @@ async function loadFromFirestore(season: number): Promise<SeasonPayload> {
         weekly: WeeklyPoint[];
         generated_at: string;
         evidence?: Evidence;
+        calibration?: Calibration;
       }
     | undefined;
 
@@ -69,6 +71,7 @@ async function loadFromFirestore(season: number): Promise<SeasonPayload> {
     // Travels with the record: a win rate shown without its verdict is the one
     // combination this project exists to avoid.
     evidence: meta?.evidence,
+    calibration: meta?.calibration,
     synthetic: false,
     source: "firestore",
   };

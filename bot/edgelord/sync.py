@@ -17,7 +17,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 
-from . import config, evidence, track
+from . import calibration, config, evidence, track
 
 # Written for the dashboard to consume in development, when there is no
 # Firebase project to point at yet. The Next.js app is the repository root and
@@ -276,6 +276,9 @@ def build_payload(conn, season: int, *, week: int | None = None) -> dict:
         # How much the record itself should be believed -- shipped alongside
         # it so the dashboard can never show a hot streak without the caveat.
         "evidence": evidence.assess(conn, season=season),
+        # What the blind predictor has learned about its own factor points --
+        # the one place results feed back, so it is shown, never hidden.
+        "calibration": calibration.current(conn),
         "synthetic": False,
     }
 
@@ -383,6 +386,7 @@ def push(conn, season: int, *, week: int | None = None, snapshot: bool = True) -
             # shows a win rate and no verdict, which is the one combination
             # this project is trying to avoid.
             "evidence": payload["evidence"],
+            "calibration": payload["calibration"],
         },
     )
     if rating_doc is not None:

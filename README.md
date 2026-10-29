@@ -201,6 +201,24 @@ football is nine losses; injecting them would teach the model to overfit noise
 it cannot distinguish from signal. They are stored and displayed so a human can
 look for a pattern across a season.
 
+## Learned factor corrections
+
+Results do feed back in one place, as numbers rather than words. The blind
+predictor scores ten factors in points and code sums them; `edgelord/calibration.py`
+fits one multiplier per factor on every graded blind pick, so a factor whose
+points keep overshooting the final margin counts for less in the next sum. Each
+multiplier is a ridge estimate pulled toward ×1 (prior ±0.25 against 13.5 points
+of game noise) and bounded to ×0.5–×1.5, so a week moves it a little and only a
+season of consistent misses moves it a lot. The prompt is unchanged, and the raw
+points are stored beside the corrected ones so corrections are always learned
+from what the model said, never from their own output.
+
+```powershell
+& $py -m edgelord.cli calibrate                     # the corrections as they stand, free
+```
+
+The corrections are on the dashboard's record page.
+
 ## Sign conventions
 
 Getting these backwards silently corrupts everything downstream, so they are

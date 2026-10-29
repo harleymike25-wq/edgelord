@@ -13,7 +13,10 @@ same games and asks the opposite way round:
    helps, what it is worth in points, and how far the evidence can be
    trusted.
 3. Code adds the points up. The sum IS the projected margin; the model never
-   states a margin it then has to reconcile with its own factors.
+   states a margin it then has to reconcile with its own factors. Each
+   factor's points are first scaled by a correction learned from graded games
+   (`edgelord.calibration`), so a factor the model keeps overrating counts for
+   less. The prompt never changes.
 4. Only then is the line brought back, in code: the side, the edge, and a
    tier that needs the model's sum and the QB-adjusted Elo to agree.
 
@@ -370,15 +373,25 @@ def win_prob(margin: float) -> float:
 
 # --- the line, brought back in code -------------------------------------------
 
-def assemble(pack: dict, out: dict, baseline: dict | None) -> dict:
-    """Sum the factors, then compare to the line. Pure arithmetic."""
+def assemble(pack: dict, out: dict, baseline: dict | None,
+             calibration: dict | None = None) -> dict:
+    """Sum the factors, then compare to the line. Pure arithmetic.
+
+    `calibration` is `edgelord.calibration.current()`: one learned multiplier
+    per factor, applied to the model's points before they are summed. The raw
+    points are kept beside the corrected ones so the correction can be learned
+    again from what the model actually said.
+    """
     home = pack["game"]["home_team"]
     away = pack["game"]["away_team"]
-    signed = {}
+    raw = {}
     for k in FACTOR_KEYS:
         f = out["factors"][k]
         pts = max(0.0, float(f["points"]))
-        signed[k] = pts if f["favors"] == home else -pts if f["favors"] == away else 0.0
+        raw[k] = pts if f["favors"] == home else -pts if f["favors"] == away else 0.0
+    multipliers = (calibration or {}).get("multipliers")
+    signed = ({k: round(v * multipliers.get(k, 1.0), 3) for k, v in raw.items()}
+              if multipliers else dict(raw))
     margin = round(sum(signed.values()), 2)
 
     market = pack.get("market") or {}
@@ -401,7 +414,11 @@ def assemble(pack: dict, out: dict, baseline: dict | None) -> dict:
             tier = "coin_flip"
 
     return {
+        "raw_points": raw,
         "signed_points": signed,
+        "raw_margin": round(sum(raw.values()), 2),
+        "calibration": {"multipliers": multipliers,
+                        "n_games": (calibration or {}).get("n_games", 0)},
         "projected_margin": margin,
         "home_win_prob": round(win_prob(margin), 3),
         "winner": home if margin > 0 else away if margin < 0 else None,
@@ -438,7 +455,9 @@ def to_prediction(pack: dict, out: dict, calc: dict) -> dict:
     rows = []
     for k in FACTOR_KEYS:
         f = out["factors"][k]
-        pts = max(0.0, float(f["points"]))
+        # Corrected points, so the factors shown add up to the margin shown.
+        pts = abs(calc["signed_points"][k]) if "signed_points" in calc \
+            else max(0.0, float(f["points"]))
         rows.append({
             "factor": label[k], "reading": f["reading"],
             "favors": f["favors"] if pts > 0 else "neither",
@@ -480,6 +499,8 @@ def to_prediction(pack: dict, out: dict, calc: dict) -> dict:
         "key_factors": key_factors,
         "decision_table": rows,
         "conviction": calc["tier"],
+        "factor_points": {"raw": calc.get("raw_points"), "source": "model",
+                          **(calc.get("calibration") or {})},
         "_model": out.get("_model"),
         "_cost_usd": out.get("_cost_usd"),
     }
@@ -533,8 +554,8 @@ def store(conn, game_id: str, features_id: int | None, out: dict, calc: dict) ->
         "INSERT INTO shadow_predictions (game_id, features_id, created_at, model, "
         "projected_margin, home_win_prob, projected_total, winner, baseline_margin, "
         "line_home, total_line, pick_side, edge, baseline_edge, tier, factors, "
-        "headline, paragraph, baseline_disagreement, cost_usd) "
-        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "headline, paragraph, baseline_disagreement, cost_usd, calibration) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (
             game_id, features_id, datetime.now().isoformat(timespec="seconds"),
             out.get("_model"), calc["projected_margin"], calc["home_win_prob"],
@@ -542,7 +563,7 @@ def store(conn, game_id: str, features_id: int | None, out: dict, calc: dict) ->
             calc["line_home"], calc["total_line"], calc["pick_side"], calc["edge"],
             calc["baseline_edge"], calc["tier"], json.dumps(out["factors"]),
             out["headline"], out["paragraph"], out["baseline_disagreement"],
-            out.get("_cost_usd"),
+            out.get("_cost_usd"), json.dumps(calc.get("calibration")),
         ),
     )
     new_id = cur.lastrowid

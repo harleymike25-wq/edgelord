@@ -3,6 +3,7 @@ import {
   ConfidenceTracking,
   EdgeRecord,
   EvidenceBadge,
+  FactorCorrections,
   RecordRow,
   SpreadRecord,
   SummaryTable,
@@ -74,6 +75,19 @@ export default async function RecordPage() {
         buckets={record.by_confidence}
         discrimination={payload.evidence?.discrimination}
       />
+
+      {payload.calibration && payload.calibration.n_games > 0 && (
+        <>
+          <h3 className="section">What the model has learned</h3>
+          <p className="note">
+            The model scores each factor in points and the points are added up into
+            its margin. After each graded game, every factor gets a correction for how
+            its points have actually tracked the final score. The corrections stay
+            close to ×1 until there are enough games to back them.
+          </p>
+          <FactorCorrections c={payload.calibration} />
+        </>
+      )}
 
 
     </>

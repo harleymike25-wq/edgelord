@@ -483,8 +483,8 @@ def cmd_postmortem(args) -> int:
 
 def cmd_shadow(args) -> int:
     """The blind predictor, beside the live one. Writes only to shadow_predictions."""
+    from . import calibration, shadow
     from . import predict as predictor
-    from . import shadow
     from .features.build import FeatureBuilder, slate_game_ids, split_played
 
     db.init()
@@ -500,6 +500,12 @@ def cmd_shadow(args) -> int:
             return 0
 
         base = shadow.baselines(season)
+        # Learned from every graded blind pick so far; unplayed games have no
+        # score, so nothing about the games being predicted can leak in.
+        calib = calibration.current(conn)
+        print(f"factor corrections from {calib['n_games']} graded games: "
+              + ", ".join(f"{k} x{m:g}" for k, m in calib["multipliers"].items() if m != 1.0)
+              if calib["n_games"] else "factor corrections: none yet")
         builder = FeatureBuilder(sorted({season - 1, season}))
         spent = 0.0
         for game_id in game_ids:
@@ -520,7 +526,7 @@ def cmd_shadow(args) -> int:
             except Exception as e:  # noqa: BLE001
                 print(f"{game_id}: FAILED {e}", file=sys.stderr)
                 continue
-            calc = shadow.assemble(pack, out, base.get(game_id))
+            calc = shadow.assemble(pack, out, base.get(game_id), calib)
             if args.official:
                 # The official pick for this game: same table, record and site as
                 # the live predictor, with the blind predictor's own tier.
@@ -542,6 +548,26 @@ def cmd_shadow(args) -> int:
                 print(f"  {out['headline']}\n  {out['paragraph']}\n")
         if not args.dry_run:
             print(f"\nthis run ${spent:.3f} · month to date ${predictor.month_spend(conn):.2f}")
+    return 0
+
+
+def cmd_calibrate(args) -> int:
+    """What the blind predictor has learned about its own factor points. Free."""
+    from . import calibration
+
+    db.init()
+    with db.session() as conn:
+        if args.backfill:
+            print(f"backfilled {calibration.backfill(conn)} blind picks")
+        c = calibration.current(conn)
+
+    print(f"graded blind picks  {c['n_games']}")
+    if not c["n_games"]:
+        return 0
+    print(f"\n{'factor':<15} {'games':>5} {'avg pts':>8} {'correction':>11}")
+    for k, f in c["factors"].items():
+        print(f"{k:<15} {f['games']:>5} {f['avg_points']:>8.2f} {'x' + format(f['multiplier'], 'g'):>11}")
+    print(f"\nmargin error (in-sample)  raw {c['rmse_raw']}  corrected {c['rmse_calibrated']}")
     return 0
 
 
@@ -761,6 +787,16 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("shadow-report", help="shadow picks graded beside the live ones")
     s.add_argument("--season", type=int)
     s.set_defaults(func=cmd_shadow_report)
+
+    s = sub.add_parser(
+        "calibrate",
+        help="show the learned corrections to the blind predictor's factor points",
+    )
+    s.add_argument(
+        "--backfill", action="store_true",
+        help="reconstruct factor points for blind picks made before they were stored",
+    )
+    s.set_defaults(func=cmd_calibrate)
 
     s = sub.add_parser("report", help="render the slate report")
     s.add_argument("--week", type=int, required=True)

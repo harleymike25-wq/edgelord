@@ -690,3 +690,23 @@ were rerun on the blind predictor with fresh lines and injuries. NE @ CHI
 (played Thursday) keeps its best_bet; PIT @ NO (underway in London) was not
 touched. The two scored rating tests (2026-09-23, 2026-10-18) lost at 2-4
 points off the line, so a 4-point bar is about frequency, not proof of an edge.
+
+## Learned factor corrections (2026-10-29)
+
+At the owner's call, results now feed back into the blind predictor: as numbers
+applied when the factor points are added up, not as lessons in the prompt.
+Post-mortem prose still never reaches a prompt. `edgelord/calibration.py` fits
+one multiplier per factor on graded blind picks (ridge toward ×1, prior ±0.25,
+SIGMA 13.5, bounded ×0.5–×1.5) and `edgelord shadow` applies it from Week 8.
+
+| What | Evidence |
+|---|---|
+| **Week 7 graded** | 2026-10-29: `refresh` took 2026 to 107 final scores. The official blind picks went **5-9, -4.45 units**. Season 53-50-4, -1.82 units. Post-mortem miss arithmetic stored for all 9 losses (`--no-model`, $0). Narratives not run. |
+| **Factor points backfilled** | Week 7 picks stored only the top five factors' points (in `key_factors`), so `calibrate --backfill` rebuilt the rest from the margin. Every factor outside the top five was "slight". 26 rows, superseded ones included. The 14 standing picks re-sum to their stored margin, with one 0.05 rounding gap (CLE/TEN). From now on raw points are stored in `predictions.factor_points`. |
+| **First corrections** | 14 games: team_strength ×0.897, home_field ×0.967, everything else within ±0.012 of ×1. In-sample margin error 14.42 → 14.24. Team strength averaged 3.4 points a game and the finals did not follow it in Week 7. One week is noise, and the prior is what keeps this at a 10% trim. |
+| **Tests** | `tests/test_calibration.py`, 9 tests: no data = no change, 14 games of a factor really worth half stays above ×0.8, 3000 games moves it below ×0.75, unused factors stay at exactly ×1, the floor holds, raw points survive storage, reconstruction is exact for a single remainder. Full suite 343 passing. |
+| **Dashboard** | "What the model has learned" panel on `/record`, from the synced Firestore record doc. `tsc --noEmit` clean, 0 console errors, rows in checklist order. |
+
+Watch: whether team_strength keeps falling as weeks are added. If it settles
+near ×1 the Week 7 trim was noise. If it goes below ×0.8, the model is
+over-scoring the Elo baseline.

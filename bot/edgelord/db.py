@@ -249,6 +249,9 @@ def session() -> Iterator[sqlite3.Connection]:
 _ADDED_COLUMNS: tuple[tuple[str, str, str], ...] = (
     ("predictions", "decision_table", "TEXT"),
     ("predictions", "model_conviction", "TEXT"),
+    # Blind picks: each factor's raw points and the corrections applied to them.
+    ("predictions", "factor_points", "TEXT"),
+    ("shadow_predictions", "calibration", "TEXT"),
 )
 
 
