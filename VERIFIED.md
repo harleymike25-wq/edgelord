@@ -727,3 +727,5 @@ picks stored, $1.22: best bets BUF -3 and MIN +3; leans GB -3.5, LV +1.5 and
 ATL +2.5; coin flips CIN -11.5, ARI +7, JAX -10, PIT -3.5 and LAC +6.5. KC @ DEN,
 NE @ MIA, PHI @ WAS and CHI @ SEA failed with "credit balance too low" (HTTP 400,
 not billed) and have no pick yet. Synced to Firestore.
+Remaining 4 run the same day after credits were added, $0.49: NE -7 and PHI +6
+leans, KC -1.5 and SEA -3 coin flips. Week 8 complete: 14 picks, $1.71 in all.
