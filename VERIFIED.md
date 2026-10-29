@@ -720,3 +720,10 @@ SEA (by 14). Two themes repeat: an early-season Elo or record that outruns per-p
 efficiency (CAR, MIN), and protection or availability gaps rated "slight" (SEA,
 PHI, LV). The first is the same thing the team_strength ×0.90 correction picked up
 independently. Display only, as before.
+
+**Week 8 picked, partly (2026-10-29).** First slate on the factor corrections
+(team_strength ×0.897, home_field ×0.967, from 14 games). 10 of 14 official blind
+picks stored, $1.22: best bets BUF -3 and MIN +3; leans GB -3.5, LV +1.5 and
+ATL +2.5; coin flips CIN -11.5, ARI +7, JAX -10, PIT -3.5 and LAC +6.5. KC @ DEN,
+NE @ MIA, PHI @ WAS and CHI @ SEA failed with "credit balance too low" (HTTP 400,
+not billed) and have no pick yet. Synced to Firestore.
