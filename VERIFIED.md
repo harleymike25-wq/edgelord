@@ -710,3 +710,13 @@ SIGMA 13.5, bounded ×0.5–×1.5) and `edgelord shadow` applies it from Week 8.
 Watch: whether team_strength keeps falling as weeks are added. If it settles
 near ×1 the Week 7 trim was noise. If it goes below ×0.8, the model is
 over-scoring the Elo baseline.
+
+**Week 7 post-mortems (2026-10-29).** 9 losses, 9 explained, 0 failed, $0.38.
+Verdicts 5 `thesis_wrong` / 4 `thesis_right_variance`. The variance calls are
+all games the picked side won on clean snaps: SF (+0.26 EPA/play, -4 turnovers),
+NYJ, DET (+18.5 success rate, lost the cover by 0.5), NE (+0.10, -5.2 special
+teams). The wrong calls include both of the week's biggest misses, CAR (by 33) and
+SEA (by 14). Two themes repeat: an early-season Elo or record that outruns per-play
+efficiency (CAR, MIN), and protection or availability gaps rated "slight" (SEA,
+PHI, LV). The first is the same thing the team_strength ×0.90 correction picked up
+independently. Display only, as before.
