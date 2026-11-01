@@ -178,7 +178,7 @@ class TestRunRespectsTheCap:
         ]
         made = []
 
-        def fake_predict(conn, builder, game_id, **kw):
+        def fake_predict(conn, builder, season, game_id, pack, ctx):
             made.append(game_id)
             _usage(conn, game_id, "recheck", 0.12)
             return {"_cost_usd": 0.12}
@@ -188,7 +188,7 @@ class TestRunRespectsTheCap:
         monkeypatch.setattr(recheck, "detect", lambda *a, **k: flagged)
         monkeypatch.setattr(recheck, "store_flags", lambda *a, **k: None)
         monkeypatch.setattr(recheck, "call_estimate", lambda conn: 0.12)
-        monkeypatch.setattr(cli, "predict_one", fake_predict)
+        monkeypatch.setattr(cli, "rerun_blind", fake_predict)
         return made
 
     def _run(self, **kw):
@@ -211,3 +211,31 @@ class TestRunRespectsTheCap:
     def test_flag_only_without_run(self, calls):
         self._run(run=False, cap=5.0)
         assert calls == []
+
+
+class TestWeatherChanges:
+    @staticmethod
+    def _wx(rain=None, wind=None, indoor=False):
+        if indoor:
+            return {"weather": {"roof": "closed", "indoor": True}}
+        return {"weather": {"roof": "outdoors", "indoor": False,
+                            "precip_probability_pct": rain, "wind_mph": wind}}
+
+    def test_rain_chance_crossing_half_is_flagged(self):
+        assert recheck.weather_changes(self._wx(20, 6), self._wx(85, 6)) == [
+            "rain chance 20% -> 85%"
+        ]
+
+    def test_wind_crossing_fifteen_is_flagged(self):
+        assert recheck.weather_changes(self._wx(10, 9), self._wx(10, 18)) == ["wind 9 mph -> 18 mph"]
+
+    def test_small_moves_on_one_side_of_the_line_are_not(self):
+        assert recheck.weather_changes(self._wx(55, 16), self._wx(90, 22)) == []
+        assert recheck.weather_changes(self._wx(10, 4), self._wx(40, 12)) == []
+
+    def test_forecast_appearing_already_wet_is_flagged(self):
+        old = {"weather": {"roof": "outdoors", "indoor": False}}
+        assert recheck.weather_changes(old, self._wx(70, 5)) == ["rain chance no forecast -> 70%"]
+
+    def test_a_roof_means_no_weather_flags(self):
+        assert recheck.weather_changes(self._wx(10, 4), self._wx(indoor=True)) == []

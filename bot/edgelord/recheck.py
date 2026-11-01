@@ -1,4 +1,4 @@
-"""Which live picks were made on information that has since changed.
+"""Which picks were made on information that has since changed.
 
 The Week 5 picks were made on a Thursday, before most injury reports existed,
 and nothing looked at them again: two losses went to kickoff with a quarterback
@@ -13,7 +13,11 @@ candidate for a paid rerun:
   measured against the number the pick itself saw, not a snapshot lookup;
 - the expected starting quarterback changing;
 - the expected starter's own game status changing;
-- a starter (or a 50%+ snap player) moving into or out of Out/Doubtful.
+- a starter (or a 50%+ snap player) moving into or out of Out/Doubtful;
+- outdoors only, the forecast crossing a threshold that changes how a game is
+  played: rain chance across 50%, sustained wind across 15 mph, or a forecast
+  appearing with either already past it. Week 8's picks were made on Thursday's
+  forecast and nothing looked at the sky again before kickoff.
 
 Backup quarterbacks do not count. A rule that flagged any quarterback would
 have rerun DEN/LAC because Trey Lance went Doubtful while Herbert started.
@@ -107,6 +111,28 @@ def injury_changes(old: dict, new: dict) -> list[str]:
     return reasons
 
 
+RAIN_PCT = 50
+WIND_MPH = 15
+
+
+def weather_changes(old: dict, new: dict) -> list[str]:
+    """Forecast moves that cross a threshold, for open-air games only."""
+    o, n = old.get("weather") or {}, new.get("weather") or {}
+    if n.get("indoor") or not n:
+        return []
+    reasons = []
+    for key, cut, unit, what in (("precip_probability_pct", RAIN_PCT, "%", "rain chance"),
+                                 ("wind_mph", WIND_MPH, " mph", "wind")):
+        a, b = o.get(key), n.get(key)
+        if b is None:
+            continue
+        crossed = (b >= cut) if a is None else ((a >= cut) != (b >= cut))
+        if crossed:
+            was = "no forecast" if a is None else f"{a:g}{unit}"
+            reasons.append(f"{what} {was} -> {b:g}{unit}")
+    return reasons
+
+
 def line_changes(old: dict, new: dict, pick_type: str | None) -> list[str]:
     om, nm = old.get("market") or {}, new.get("market") or {}
     reasons = []
@@ -147,7 +173,8 @@ def detect(conn, builder, season: int, week: int, *, now: datetime | None = None
             out.append({**g, "pack": new, "reasons": ["no pick yet"]})
             continue
         old = json.loads(g["payload"]) if g["payload"] else {}
-        reasons = line_changes(old, new, g["pick_type"]) + injury_changes(old, new)
+        reasons = (line_changes(old, new, g["pick_type"]) + injury_changes(old, new)
+                   + weather_changes(old, new))
         if reasons:
             out.append({**g, "pack": new, "reasons": reasons})
     return out

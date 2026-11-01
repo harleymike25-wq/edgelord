@@ -247,6 +247,7 @@ def cmd_recheck(args) -> int:
             return 0
 
         est = recheck.call_estimate(conn)
+        ctx: dict = {}
         spent = recheck.week_spend(conn, season, args.week)
         if args.allow is not None:
             cap = spent + args.allow
@@ -256,9 +257,7 @@ def cmd_recheck(args) -> int:
                 print(f"{f['game_id']}: left flagged, cap reached")
                 continue
             try:
-                result = predict_one(
-                    conn, builder, f["game_id"], label="recheck", pack=f["pack"]
-                )
+                rerun_blind(conn, builder, season, f["game_id"], f["pack"], ctx)
             except predictor.BudgetExceeded as e:
                 print(f"stopping: {e}", file=sys.stderr)
                 break
@@ -481,6 +480,59 @@ def cmd_postmortem(args) -> int:
     return 0
 
 
+def _pick_label(calc: dict) -> str:
+    from . import shadow
+    if shadow.takes_total(calc):
+        return f"{calc['total_side']} {calc['total_line']:g} lean edge {calc['total_edge']}"
+    return f"{calc['pick_side']} {calc['tier']} edge {calc['edge']}"
+
+
+def store_blind_official(conn, game_id, features_id, pack, out, calc):
+    """Store a blind call as the game's official pick, and clear its flag.
+
+    Same table, record and site as the live predictor, with the blind
+    predictor's own tier (always "lean" when it takes the total).
+    """
+    from . import predict as predictor
+    from . import shadow
+
+    result = shadow.to_prediction(pack, out, calc)
+    pid = predictor.store(conn, game_id, features_id, pack, result,
+                          run_label="blind", conviction=result["conviction"])
+    conn.execute("DELETE FROM recheck_flags WHERE game_id = ?", (game_id,))
+    return pid, result
+
+
+def rerun_blind(conn, builder, season: int, game_id: str, pack: dict, ctx: dict) -> dict | None:
+    """Re-pick one flagged game with the blind predictor, which makes the official picks.
+
+    Spend is logged as "recheck" so the weekly cap sees it; the pick is stored
+    as "blind" so it grades and calibrates with the rest. `ctx` caches the Elo
+    baselines and factor corrections across a run, loaded on the first call.
+    BudgetExceeded propagates so the caller can stop.
+    """
+    from . import calibration, shadow
+    from . import predict as predictor
+
+    if not ctx:
+        ctx["base"] = shadow.baselines(season)
+        ctx["calib"] = calibration.current(conn)
+    base = ctx["base"].get(game_id)
+    try:
+        out = shadow.predict(pack, conn, base, run_label="recheck")
+    except predictor.BudgetExceeded:
+        raise
+    except Exception as e:  # noqa: BLE001
+        print(f"{game_id}: FAILED {e}", file=sys.stderr)
+        return None
+    calc = shadow.assemble(pack, out, base, ctx["calib"])
+    features_id = builder.store(conn, game_id, pack)
+    _, result = store_blind_official(conn, game_id, features_id, pack, out, calc)
+    conn.commit()
+    print(f"{game_id}: rerun -> {_pick_label(calc)}")
+    return result
+
+
 def cmd_shadow(args) -> int:
     """The blind predictor, beside the live one. Writes only to shadow_predictions."""
     from . import calibration, shadow
@@ -528,12 +580,7 @@ def cmd_shadow(args) -> int:
                 continue
             calc = shadow.assemble(pack, out, base.get(game_id), calib)
             if args.official:
-                # The official pick for this game: same table, record and site as
-                # the live predictor, with the blind predictor's own tier.
-                result = shadow.to_prediction(pack, out, calc)
-                sid = predictor.store(conn, game_id, features_id, pack, result,
-                                      run_label=label, conviction=calc["tier"])
-                conn.execute("DELETE FROM recheck_flags WHERE game_id = ?", (game_id,))
+                sid, _ = store_blind_official(conn, game_id, features_id, pack, out, calc)
             else:
                 sid = shadow.store(conn, game_id, features_id, out, calc)
             conn.commit()
@@ -541,8 +588,7 @@ def cmd_shadow(args) -> int:
             print(
                 f"{game_id:<20} {calc['winner'] or 'tie':<4} by {abs(calc['projected_margin']):>4.1f} "
                 f"({calc['home_win_prob']:.0%} home)  elo {calc['baseline_margin']:+.1f}  "
-                f"line {calc['line_home']}  -> {calc['pick_side']} {calc['tier']} "
-                f"edge {calc['edge']}  [s#{sid}]"
+                f"line {calc['line_home']}  -> {_pick_label(calc)}  [s#{sid}]"
             )
             if args.verbose:
                 print(f"  {out['headline']}\n  {out['paragraph']}\n")
@@ -707,7 +753,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser(
         "recheck",
-        help="flag live picks whose line or key injuries changed; rerun them within a weekly cap",
+        help="flag picks whose line, key injuries or weather changed; rerun them within a weekly cap",
     )
     s.add_argument("--season", type=int)
     s.add_argument("--week", type=int, required=True)

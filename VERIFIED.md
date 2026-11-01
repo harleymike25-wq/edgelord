@@ -739,3 +739,14 @@ Out). MIN +3 stays a best bet (MIN by 3.2 → 1.8, edge 4.8, Kerby Joseph Out).
 ATL +2.5 stays a lean (ATL by 0.3 → TB by 1.1, Egbuka Out). **CHI @ SEA flips
 SEA -3 → CHI +3**, still a coin flip (SEA by 3.7 → 2.2 after Charles Cross was
 ruled Out). Old picks superseded, synced to Firestore. 7 flags left unrerun.
+
+**Weather rechecks and total picks (2026-11-01).** Asked after ATL's game went to
+kickoff in the rain on Thursday's forecast. Three changes, none rerun on Week 8 (the
+1 PM games had kicked off by the time they landed): `recheck` now flags open-air
+games whose rain chance crosses 50% or wind crosses 15 mph; `recheck --run` reruns
+through the blind predictor instead of the old live one (spend logged as `recheck`,
+pick stored as `blind`); and the blind predictor takes the over/under instead of the
+spread when its projected total is 4+ points off the market and further off than its
+margin is off the spread. Total picks are capped at lean until they have a record.
+`EDGELORD_RECHECK_WEEKLY_USD` still defaults to 0, so scheduled rechecks flag but do
+not rerun until it is raised.

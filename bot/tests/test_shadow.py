@@ -146,3 +146,35 @@ class TestOfficialPick:
         assert res["key_factors"][0] == "Team strength: BBB +4"
         assert [r["weight"] for r in res["decision_table"][:3]] == ["decisive", "strong", "moderate"]
         assert res["headline"] == "h"
+
+
+class TestTotalPicks:
+    def _pack(self, spread=3.0, total=44.5):
+        p = _pack(spread)
+        p["market"]["current_total"] = total
+        return p
+
+    def test_total_far_off_the_market_and_further_than_the_spread_is_the_pick(self):
+        pack = self._pack(3.0, 44.5)
+        out = _out(team_strength=3.5)  # margin 3.5 vs line 3: spread edge 0.5
+        out["projected_total"] = 38.0
+        calc = shadow.assemble(pack, out, {"projected_home": 3.0})
+        assert calc["total_side"] == "under" and calc["total_edge"] == 6.5
+        res = shadow.to_prediction(pack, out, calc)
+        assert res["pick_type"] == "total" and res["pick_side"] == "under"
+        assert res["conviction"] == "lean"
+        assert "Under 44.5" in res["paragraph"]
+
+    def test_small_total_gap_keeps_the_spread_pick(self):
+        pack = self._pack(3.0, 44.5)
+        out = _out(team_strength=3.5)
+        out["projected_total"] = 42.0
+        res = shadow.to_prediction(pack, out, shadow.assemble(pack, out, None))
+        assert res["pick_type"] == "spread"
+
+    def test_bigger_spread_edge_keeps_the_spread_pick(self):
+        pack = self._pack(3.0, 44.5)
+        out = _out(team_strength=9.0)  # spread edge 6
+        out["projected_total"] = 40.0  # total edge 4.5
+        res = shadow.to_prediction(pack, out, shadow.assemble(pack, out, {"projected_home": 6.0}))
+        assert res["pick_type"] == "spread"

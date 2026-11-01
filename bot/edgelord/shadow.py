@@ -83,6 +83,14 @@ BEST_BET_EDGE = 4.0
 BEST_BET_BASELINE_EDGE = 1.0
 LEAN_EDGE = 1.0
 
+# Over/under picks. The blind model has always projected a total; it was shown
+# as a lean and never bet. A game takes the total instead of the spread only
+# when the projection is TOTAL_EDGE points off the market total *and* further
+# off it than the margin is off the spread. Totals have no Elo to agree or
+# disagree, so they top out at "lean" until they have a graded record of their
+# own. Added at the owner's call on 2026-11-01 (Week 8, ATL in the rain).
+TOTAL_EDGE = 4.0
+
 
 # --- what the model sees -----------------------------------------------------
 
@@ -413,6 +421,15 @@ def assemble(pack: dict, out: dict, baseline: dict | None,
         else:
             tier = "coin_flip"
 
+    total_line = market.get("current_total")
+    total_side = total_edge = None
+    projected_total = out.get("projected_total")
+    if total_line is not None and projected_total is not None:
+        tdiff = float(projected_total) - float(total_line)
+        if tdiff:
+            total_side = "over" if tdiff > 0 else "under"
+            total_edge = round(abs(tdiff), 2)
+
     return {
         "raw_points": raw,
         "signed_points": signed,
@@ -423,7 +440,9 @@ def assemble(pack: dict, out: dict, baseline: dict | None,
         "home_win_prob": round(win_prob(margin), 3),
         "winner": home if margin > 0 else away if margin < 0 else None,
         "line_home": line,
-        "total_line": market.get("current_total"),
+        "total_line": total_line,
+        "total_side": total_side,
+        "total_edge": total_edge,
         "pick_side": pick,
         "edge": edge,
         "baseline_margin": base,
@@ -441,6 +460,12 @@ def _weight(points: float) -> str:
 
 def _fmt(n: float) -> str:
     return f"{n:g}"
+
+
+def takes_total(calc: dict) -> bool:
+    """True when the total, not the spread, is this game's pick."""
+    te = calc.get("total_edge")
+    return te is not None and te >= TOTAL_EDGE and te > (calc.get("edge") or 0.0)
 
 
 def to_prediction(pack: dict, out: dict, calc: dict) -> dict:
@@ -484,21 +509,29 @@ def to_prediction(pack: dict, out: dict, calc: dict) -> dict:
     lead = f"Our number: {ours}. The market: {market}. The pick: {pick} {shown}."
 
     headline = out["headline"].rstrip(".")
-    if winner and pick != winner:
+    pick_type, side, edge, tier = "spread", pick, calc["edge"], calc["tier"]
+    if takes_total(calc):
+        pick_type, side, edge, tier = "total", calc["total_side"], calc["total_edge"], "lean"
+        ptot = _fmt(round(float(out["projected_total"]), 1))
+        tl = _fmt(calc["total_line"])
+        lead = (f"Our number: {ours}, {ptot} points in all. The market total: {tl}. "
+                f"The pick: {side.capitalize()} {tl}.")
+        headline += f"; {side} {tl}"
+    elif winner and pick != winner:
         headline += f", but closer than the market thinks: {pick} {shown}"
 
     return {
-        "pick_type": "spread",
-        "pick_side": pick,
+        "pick_type": pick_type,
+        "pick_side": side,
         # Chance the pick covers, from the edge over the line.
-        "confidence": round(100 * win_prob(calc["edge"] or 0.0)),
+        "confidence": round(100 * win_prob(edge or 0.0)),
         "projected_margin": margin,
         "projected_total": out["projected_total"],
         "headline": headline,
         "paragraph": f"{lead}\n\n{out['paragraph']}",
         "key_factors": key_factors,
         "decision_table": rows,
-        "conviction": calc["tier"],
+        "conviction": tier,
         "factor_points": {"raw": calc.get("raw_points"), "source": "model",
                           **(calc.get("calibration") or {})},
         "_model": out.get("_model"),
