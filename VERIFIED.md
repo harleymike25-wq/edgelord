@@ -744,3 +744,6 @@ flip: KC by 1.9 → 0.9 with Hufanga Out, under the line. The write-up still has
 KC winning; it just doesn't cover. Synced.
 LAC @ LA rerun on request, $0.11. **Flips LAC +6.5 → LA -6.5**, coin flip → lean:
 LA by 6.4 → 7.8 with Derwin James Out, edge 1.27. Synced.
+NE @ MIA rerun on request for weather, $0.13. Forecast had eased since Thursday
+(wind 14 → 6.5 mph, rain 82% → 72%, light). **Stays NE -7, lean → coin flip**:
+NE by 8.5 → 7.8, edge 0.77. Synced.
