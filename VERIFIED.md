@@ -729,3 +729,13 @@ NE @ MIA, PHI @ WAS and CHI @ SEA failed with "credit balance too low" (HTTP 400
 not billed) and have no pick yet. Synced to Firestore.
 Remaining 4 run the same day after credits were added, $0.49: NE -7 and PHI +6
 leans, KC -1.5 and SEA -3 coin flips. Week 8 complete: 14 picks, $1.71 in all.
+
+**Week 8 rechecked (2026-11-01).** `refresh` + `recheck --week 8` flagged 11
+unplayed picks, all for injuries and none for line moves. 7 were players who had
+missed practice and were then ruled Out. The 4 with real changes were rerun with
+`shadow --official --game`, $0.54. `recheck --run` would have used the old live
+predictor. PHI +6.5 stays a lean (WAS by 3.8 → 5.3 after DeVonta Smith was ruled
+Out). MIN +3 stays a best bet (MIN by 3.2 → 1.8, edge 4.8, Kerby Joseph Out).
+ATL +2.5 stays a lean (ATL by 0.3 → TB by 1.1, Egbuka Out). **CHI @ SEA flips
+SEA -3 → CHI +3**, still a coin flip (SEA by 3.7 → 2.2 after Charles Cross was
+ruled Out). Old picks superseded, synced to Firestore. 7 flags left unrerun.
