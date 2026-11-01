@@ -739,3 +739,6 @@ Out). MIN +3 stays a best bet (MIN by 3.2 → 1.8, edge 4.8, Kerby Joseph Out).
 ATL +2.5 stays a lean (ATL by 0.3 → TB by 1.1, Egbuka Out). **CHI @ SEA flips
 SEA -3 → CHI +3**, still a coin flip (SEA by 3.7 → 2.2 after Charles Cross was
 ruled Out). Old picks superseded, synced to Firestore. 7 flags left unrerun.
+KC @ DEN rerun on request, $0.13. **Flips KC -1.5 → DEN +1.5**, still a coin
+flip: KC by 1.9 → 0.9 with Hufanga Out, under the line. The write-up still has
+KC winning; it just doesn't cover. Synced.
