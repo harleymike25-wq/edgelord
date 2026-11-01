@@ -481,9 +481,6 @@ def cmd_postmortem(args) -> int:
 
 
 def _pick_label(calc: dict) -> str:
-    from . import shadow
-    if shadow.takes_total(calc):
-        return f"{calc['total_side']} {calc['total_line']:g} lean edge {calc['total_edge']}"
     return f"{calc['pick_side']} {calc['tier']} edge {calc['edge']}"
 
 
@@ -491,7 +488,7 @@ def store_blind_official(conn, game_id, features_id, pack, out, calc):
     """Store a blind call as the game's official pick, and clear its flag.
 
     Same table, record and site as the live predictor, with the blind
-    predictor's own tier (always "lean" when it takes the total).
+    predictor's own tier.
     """
     from . import predict as predictor
     from . import shadow
