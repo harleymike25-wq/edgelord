@@ -742,3 +742,5 @@ ruled Out). Old picks superseded, synced to Firestore. 7 flags left unrerun.
 KC @ DEN rerun on request, $0.13. **Flips KC -1.5 → DEN +1.5**, still a coin
 flip: KC by 1.9 → 0.9 with Hufanga Out, under the line. The write-up still has
 KC winning; it just doesn't cover. Synced.
+LAC @ LA rerun on request, $0.11. **Flips LAC +6.5 → LA -6.5**, coin flip → lean:
+LA by 6.4 → 7.8 with Derwin James Out, edge 1.27. Synced.
