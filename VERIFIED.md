@@ -747,3 +747,19 @@ LA by 6.4 → 7.8 with Derwin James Out, edge 1.27. Synced.
 NE @ MIA rerun on request for weather, $0.13. Forecast had eased since Thursday
 (wind 14 → 6.5 mph, rain 82% → 72%, light). **Stays NE -7, lean → coin flip**:
 NE by 8.5 → 7.8, edge 0.77. Synced.
+
+**Week 8 graded, partly (2026-11-01).** `refresh` took 2026 to 117 final scores.
+10 of 14 graded: **7-3, +3.36 units**; best bets 1-1 (BUF won by 26, MIN lost by 1).
+Season **60-53-4, +1.55 units, ROI +0.014**. KC/DEN, NE/MIA and PHI/WAS had no
+final in nflverse yet; CHI/SEA is Monday. Reruns from the morning recheck: LA
+flipped and won; MIN and ATL kept their side and lost.
+
+**Week 8 post-mortems (2026-11-01).** 3 losses, 3 explained, 0 failed, $0.13.
+Verdicts 2 `thesis_right_variance` / 1 `thesis_wrong`. CIN -11.5 won the snaps
+(+0.08 EPA ex-turnovers, +7.7 success, +6.8 special teams) and lost the cover on
+4 turnovers to 2. MIN +3 was a dead heat on efficiency, as projected, decided by a
+-4.0 special-teams swing. ATL +2.5 (lost 16-0) is the real miss: it trusted
+Penix's five-game surge over a Tampa defence trending sharply better. The
+heaviest-wrong-factor label pointed at team strength on CIN and MIN, but the
+narratives put both down to variance, so Week 8 is not yet extra evidence for the
+team_strength trim. Display only, as before.
