@@ -771,3 +771,9 @@ Season **62-55-4, +1.36 units, ROI +0.012**. Factor corrections now from 28
 graded blind picks: team_strength ×0.945 (was ×0.897 from 14), home_field
 ×0.994, everything else within ±0.04 of ×1. Synced to Firestore.
 PHI and NE have no post-mortem yet.
+
+**Week 9 picked (2026-11-05).** All 15 official blind picks stored, $1.85,
+on corrections from 28 graded games (team_strength ×0.945). Best bet MIN +3
+(MIN by 1.2, edge 4.17). Leans JAX -10, CIN -3, DEN -2.5, IND +5.5, NO -3,
+NYG -3.5, WAS +4.5, LV +10, SEA -8.5. Coin flips KC -10, MIA +7, HOU -5.5,
+GB +3, TB +6. Synced to Firestore.
