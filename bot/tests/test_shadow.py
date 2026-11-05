@@ -146,3 +146,96 @@ class TestOfficialPick:
         assert res["key_factors"][0] == "Team strength: BBB +4"
         assert [r["weight"] for r in res["decision_table"][:3]] == ["decisive", "strong", "moderate"]
         assert res["headline"] == "h"
+
+
+class TestHeldSideDowngrade:
+    """A rerun that keeps its side on a number moved toward the other team drops a tier."""
+
+    def _calc(self, margin, spread=3.0, base=None):
+        # Everything in team_strength so the corrected margin is exactly `margin`.
+        out = _out(team_strength=margin)
+        return shadow.assemble(_pack(spread), out, {"projected_home": base if base is not None
+                                                    else margin, "home_win_prob": 0.5})
+
+    def test_held_side_on_a_weaker_number_drops_a_tier(self):
+        # BBB by 5.5 on a 1.0 line: edge 4.5, a best bet. Was BBB by 7.
+        calc = self._calc(5.5, spread=1.0)
+        assert calc["tier"] == "best_bet"
+        prior = {"id": 9, "pick_side": HOME, "projected_margin": 7.0, "conviction": "best_bet"}
+        rule = shadow.held_side_downgrade(_pack(1.0), calc, prior)
+        assert rule == {"rule": "held_side", "from": "best_bet", "to": "lean", "moved": -1.5,
+                        "prior_id": 9, "prior_margin": 7.0}
+
+    def test_lean_drops_to_coin_flip(self):
+        calc = self._calc(5.0)  # edge 2.0 on a 3.0 line
+        assert calc["tier"] == "lean"
+        rule = shadow.held_side_downgrade(
+            _pack(), calc, {"pick_side": HOME, "projected_margin": 6.0})
+        assert rule["to"] == "coin_flip"
+
+    def test_underdog_side_reads_toward_the_dog(self):
+        # AAA +3: BBB by 1 on a 3.0 line. Was AAA by 0.5 (margin -0.5), now BBB by 1:
+        # the number moved 1.5 toward BBB, against the AAA pick.
+        calc = self._calc(1.0, base=0.0)
+        assert calc["pick_side"] == AWAY and calc["tier"] == "lean"
+        rule = shadow.held_side_downgrade(
+            _pack(), calc, {"pick_side": AWAY, "projected_margin": -0.5})
+        assert rule["moved"] == -1.5 and rule["to"] == "coin_flip"
+
+    def test_flipped_side_is_left_alone(self):
+        calc = self._calc(5.0)
+        assert shadow.held_side_downgrade(
+            _pack(), calc, {"pick_side": AWAY, "projected_margin": 0.0}) is None
+
+    def test_number_that_held_or_improved_is_left_alone(self):
+        calc = self._calc(5.0)
+        for prior_margin in (5.0, 5.4, 4.0):  # unchanged, under the 0.5 bar, better
+            assert shadow.held_side_downgrade(
+                _pack(), calc, {"pick_side": HOME, "projected_margin": prior_margin}) is None
+
+    def test_coin_flip_has_nowhere_to_go(self):
+        calc = self._calc(3.5)  # edge 0.5
+        assert calc["tier"] == "coin_flip"
+        assert shadow.held_side_downgrade(
+            _pack(), calc, {"pick_side": HOME, "projected_margin": 8.0}) is None
+
+    def test_no_standing_pick_is_left_alone(self):
+        assert shadow.held_side_downgrade(_pack(), self._calc(5.0), None) is None
+
+    def test_rule_is_stored_with_the_pick(self):
+        calc = self._calc(5.0)
+        calc["tier_rule"] = shadow.held_side_downgrade(
+            _pack(), calc, {"pick_side": HOME, "projected_margin": 6.0})
+        calc["tier"] = calc["tier_rule"]["to"]
+        result = shadow.to_prediction(_pack(), _out(team_strength=5.0), calc)
+        assert result["conviction"] == "coin_flip"
+        assert result["factor_points"]["tier_rule"]["from"] == "lean"
+
+
+class TestStandingBlindPick:
+    @pytest.fixture
+    def conn(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(config, "DB_PATH", tmp_path / "t.db")
+        db.init()
+        c = db.connect()
+        yield c
+        c.close()
+
+    def _insert(self, conn, label, side, margin):
+        """Insert a pick and supersede the one standing before it, as predict.store does."""
+        new = conn.execute(
+            "INSERT INTO predictions (game_id, model, created_at, run_label, pick_side, "
+            "projected_margin, paragraph) VALUES ('G','m','now',?,?,?,'p')",
+            (label, side, margin)).lastrowid
+        conn.execute("UPDATE predictions SET superseded_by = ? WHERE game_id = 'G' "
+                     "AND id != ? AND superseded_by IS NULL", (new, new))
+
+    def test_reads_only_the_standing_blind_pick(self, conn):
+        self._insert(conn, "blind", HOME, 7.0)
+        # A live-predictor rerun now stands: its margin is a nudge off the line,
+        # not a blind sum, so the rule has nothing to compare against.
+        self._insert(conn, "sunday", HOME, 2.0)
+        assert shadow.standing_blind_pick(conn, "G") is None
+        self._insert(conn, "blind", AWAY, -1.0)
+        got = shadow.standing_blind_pick(conn, "G")
+        assert got["pick_side"] == AWAY and got["projected_margin"] == -1.0

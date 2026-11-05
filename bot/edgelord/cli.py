@@ -527,7 +527,13 @@ def cmd_shadow(args) -> int:
                 print(f"{game_id}: FAILED {e}", file=sys.stderr)
                 continue
             calc = shadow.assemble(pack, out, base.get(game_id), calib)
+            rule = None
             if args.official:
+                rule = shadow.held_side_downgrade(
+                    pack, calc, shadow.standing_blind_pick(conn, game_id))
+                if rule:
+                    calc["tier"] = rule["to"]
+                    calc["tier_rule"] = rule
                 # The official pick for this game: same table, record and site as
                 # the live predictor, with the blind predictor's own tier.
                 result = shadow.to_prediction(pack, out, calc)
@@ -544,6 +550,9 @@ def cmd_shadow(args) -> int:
                 f"line {calc['line_home']}  -> {calc['pick_side']} {calc['tier']} "
                 f"edge {calc['edge']}  [s#{sid}]"
             )
+            if rule:
+                print(f"  held side on a weaker number ({rule['moved']:+g} pts): "
+                      f"{rule['from']} -> {rule['to']}")
             if args.verbose:
                 print(f"  {out['headline']}\n  {out['paragraph']}\n")
         if not args.dry_run:

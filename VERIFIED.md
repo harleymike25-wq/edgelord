@@ -808,3 +808,24 @@ things to watch, not things to act on.
    theme didn't really come back in Week 8. The heaviest-wrong-factor label
    pointed at team strength on CIN and MIN, but those were variance. Keep
    watching the multiplier against the ×0.8 line set on 2026-10-29.
+
+**Held-side rerun rule (2026-11-05, owner's call).** From Week 9, when
+`shadow --official` reruns a game whose standing pick is a blind pick, keeps the
+same side, and the new projected margin has moved 0.5+ points toward the other
+team, the pick drops one tier: best_bet → lean, lean → coin_flip. Coin flips
+stay. Flipped sides, improved numbers and line-only moves are left alone. A
+standing live-predictor pick is never compared, because its margin is a nudge
+off the line rather than a blind sum. The rule is stored with the pick
+(`factor_points.tier_rule`: from, to, points moved, prior id) and printed in the
+run output. Code: `shadow.held_side_downgrade`, `shadow.standing_blind_pick`,
+`HELD_SIDE_SHRINK = 0.5`. 9 new tests, full suite 352 passing. Not applied to
+any past pick.
+Week 8 had it applied: MIN +3 best_bet → lean (-1.4), ATL +2.5 and PHI +6.5
+lean → coin_flip (-1.4, -1.5). NE -7 was already a coin flip, so no change. All
+four lost. The spread record doesn't change, because every pick still counts
+there. What changes is the best-bet record, which would have been 1-0 instead
+of 1-1.
+Grade it like the shadow test: count held-side downgrades and how they finish.
+Drop the rule if they cover at the rate of untouched picks over a full season.
+It is based on 7 games. The prompt is unchanged, and `recheck --run` (old live
+predictor) does not use it.

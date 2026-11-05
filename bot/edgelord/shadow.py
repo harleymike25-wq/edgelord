@@ -83,6 +83,17 @@ BEST_BET_EDGE = 4.0
 BEST_BET_BASELINE_EDGE = 1.0
 LEAN_EDGE = 1.0
 
+# Held-side rerun rule (2026-11-05, owner's call). When a rerun keeps the
+# standing blind pick's side but the new number has moved toward the other
+# team, the pick is weaker than its edge says: the news went against it and
+# it held only because the line was further out still. Such a pick drops one
+# tier. Weeks 7-8: reruns that flipped went 3-0, reruns that held went 0-4
+# (MIN, ATL, PHI, NE), and in three of the four the number had moved 1.4-1.5
+# points toward the opponent. Seven games prove nothing; this is a rule to
+# grade, not a finding.
+HELD_SIDE_SHRINK = 0.5
+TIER_ORDER = ("coin_flip", "lean", "best_bet")
+
 
 # --- what the model sees -----------------------------------------------------
 
@@ -432,6 +443,45 @@ def assemble(pack: dict, out: dict, baseline: dict | None,
     }
 
 
+def standing_blind_pick(conn, game_id: str) -> dict | None:
+    """The current official blind pick for a game, if there is one."""
+    row = conn.execute(
+        "SELECT id, pick_side, projected_margin, conviction FROM predictions "
+        "WHERE game_id = ? AND superseded_by IS NULL AND run_label = 'blind' "
+        "ORDER BY id DESC LIMIT 1",
+        (game_id,),
+    ).fetchone()
+    return dict(row) if row else None
+
+
+def held_side_downgrade(pack: dict, calc: dict, prior: dict | None) -> dict | None:
+    """Drop the tier one step when a rerun holds its side on a weaker number.
+
+    Pure: returns what the rule decided, or None when it does not apply (no
+    standing pick, a flipped side, a number that held or improved, or a pick
+    already at the bottom tier). Mutates nothing; the caller applies it.
+    """
+    if not prior or calc.get("tier") not in TIER_ORDER:
+        return None
+    if prior.get("pick_side") != calc.get("pick_side") or prior.get("projected_margin") is None:
+        return None
+    toward = 1 if calc["pick_side"] == pack["game"]["home_team"] else -1
+    moved = round((calc["projected_margin"] - float(prior["projected_margin"])) * toward, 2)
+    if moved > -HELD_SIDE_SHRINK:
+        return None
+    i = TIER_ORDER.index(calc["tier"])
+    if i == 0:
+        return None
+    return {
+        "rule": "held_side",
+        "from": calc["tier"],
+        "to": TIER_ORDER[i - 1],
+        "moved": moved,
+        "prior_id": prior.get("id"),
+        "prior_margin": prior["projected_margin"],
+    }
+
+
 _WEIGHT_BY_POINTS = ((3.0, "decisive"), (2.0, "strong"), (1.0, "moderate"), (0.01, "slight"))
 
 
@@ -500,7 +550,8 @@ def to_prediction(pack: dict, out: dict, calc: dict) -> dict:
         "decision_table": rows,
         "conviction": calc["tier"],
         "factor_points": {"raw": calc.get("raw_points"), "source": "model",
-                          **(calc.get("calibration") or {})},
+                          **(calc.get("calibration") or {}),
+                          **({"tier_rule": calc["tier_rule"]} if calc.get("tier_rule") else {})},
         "_model": out.get("_model"),
         "_cost_usd": out.get("_cost_usd"),
     }
