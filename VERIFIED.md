@@ -763,3 +763,48 @@ Penix's five-game surge over a Tampa defence trending sharply better. The
 heaviest-wrong-factor label pointed at team strength on CIN and MIN, but the
 narratives put both down to variance, so Week 8 is not yet extra evidence for the
 team_strength trim. Display only, as before.
+
+**Week 8 finished, provisional (2026-11-05).** Done in a cloud session that has
+no copy of `edgelord.db`, so this is arithmetic on nflverse's final scores and
+play-by-play, not `grade` or `postmortem` output. Nothing is stored yet. To make
+it official, run `refresh`, `grade` and `postmortem --week 8` locally.
+The last four: **DEN +1.5 won** (28-24), **CHI +3 won** (34-17), **NE -7 lost**
+(24-19, 2 short, near_miss), **PHI +6.5 lost** (10-27, 10.5 short, decisive).
+Week 8 **9-5**. At flat -110 that is about +3.2 units for the week and about
+62-55-4, +1.4 units for the season. The stored prices will move these a little.
+- NE -7, variance. NE won the snaps (+0.19 EPA/play ex-turnovers to -0.02,
+  success 50.0 to 41.0, special teams +3.1, turnovers 1-1) and won by 5, not 8.
+- PHI +6.5, thesis wrong. McKee (starting since Week 6, so it was in the pack)
+  went -0.27 EPA/dropback with 5 sacks, PHI -0.09 ex-turnovers to WAS +0.10.
+  The recheck moved WAS by 3.8 → 5.3 once DeVonta Smith was ruled Out, and the
+  pick stayed because 5.3 was still under 6.5. The close was 6, so the market
+  missed by about as much as the model did.
+
+**What Weeks 7-8 taught (2026-11-05).** 28 blind picks, so treat all of this as
+things to watch, not things to act on.
+1. **The blind predictor is break-even so far.** 5-9 then 9-5 is 14-14. The
+   first week on the factor corrections went well, but one week can't tell the
+   corrections apart from noise. Same rule as the shadow test: no verdict for
+   weeks yet.
+2. **Most losses are variance, and the post-mortems keep saying so.** Of 14
+   losses, 7 look like variance (Week 7: SF, NYJ, DET, NE; Week 8: CIN, MIN, NE).
+   In each one the picked side won or tied on per-play efficiency and lost on
+   turnovers, special teams or a half-point. Retuning on those would chase noise.
+3. **The real misses are passing-game calls.** Week 7: CAR and MIN (Elo or
+   record ahead of efficiency), SEA, PHI and LV (protection or availability gaps
+   rated "slight"). Week 8: ATL (trusted Penix's five-game surge over an
+   improving Tampa defence) and PHI (a backup QB behind a line that gave up 5
+   sacks). Both weeks point the same way. The model gives too much credit to a
+   short burst of form and too little weight to pass protection and QB depth.
+   That is what the quarterback and pressure factors should be watched for in
+   the calibration. The prompt stays unchanged.
+4. **Injury reruns: picks that flipped went 3-0, picks that held went 0-4.**
+   LA, DEN and CHI flipped and won. MIN, ATL, PHI and NE kept their side and
+   lost. In MIN, ATL and PHI the news moved the number toward the other team
+   and the pick held only because the line was even further out. Seven games
+   is nothing, but this is worth tracking: a held pick whose edge shrank is
+   probably weaker than its tier says.
+5. **No new evidence on team_strength.** Week 7's "Elo outruns efficiency"
+   theme didn't really come back in Week 8. The heaviest-wrong-factor label
+   pointed at team strength on CIN and MIN, but those were variance. Keep
+   watching the multiplier against the ×0.8 line set on 2026-10-29.
