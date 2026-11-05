@@ -820,7 +820,7 @@ off the line rather than a blind sum. The rule is stored with the pick
 run output. Code: `shadow.held_side_downgrade`, `shadow.standing_blind_pick`,
 `HELD_SIDE_SHRINK = 0.5`. 9 new tests, full suite 352 passing. Not applied to
 any past pick.
-Week 8 had it applied: MIN +3 best_bet → lean (-1.4), ATL +2.5 and PHI +6.5
+Had it been in place for Week 8: MIN +3 best_bet → lean (-1.4), ATL +2.5 and PHI +6.5
 lean → coin_flip (-1.4, -1.5). NE -7 was already a coin flip, so no change. All
 four lost. The spread record doesn't change, because every pick still counts
 there. What changes is the best-bet record, which would have been 1-0 instead
