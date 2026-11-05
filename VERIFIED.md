@@ -763,3 +763,11 @@ Penix's five-game surge over a Tampa defence trending sharply better. The
 heaviest-wrong-factor label pointed at team strength on CIN and MIN, but the
 narratives put both down to variance, so Week 8 is not yet extra evidence for the
 team_strength trim. Display only, as before.
+
+**Week 8 graded, fully (2026-11-05).** `refresh` took 2026 to 121 final scores,
+`grade` scored the last 4. DEN +1.5 and CHI +3 won (both were flips from the
+recheck), PHI +6.5 and NE -7 lost. Week 8 **9-5, +3.18 units**; best bets 1-1.
+Season **62-55-4, +1.36 units, ROI +0.012**. Factor corrections now from 28
+graded blind picks: team_strength ×0.945 (was ×0.897 from 14), home_field
+×0.994, everything else within ±0.04 of ×1. Synced to Firestore.
+PHI and NE have no post-mortem yet.
