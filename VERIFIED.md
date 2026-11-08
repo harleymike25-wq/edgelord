@@ -777,3 +777,17 @@ on corrections from 28 graded games (team_strength ×0.945). Best bet MIN +3
 (MIN by 1.2, edge 4.17). Leans JAX -10, CIN -3, DEN -2.5, IND +5.5, NO -3,
 NYG -3.5, WAS +4.5, LV +10, SEA -8.5. Coin flips KC -10, MIA +7, HOU -5.5,
 GB +3, TB +6. Synced to Firestore.
+
+**Week 9 rechecked (2026-11-08).** `refresh` + `recheck --week 9` flagged all 13
+unplayed picks for injuries (2 also for lines crossing a key number). Weather,
+which recheck does not check, was compared by hand: every forecast dry, wind
+under 12 mph, mostly calmer than Thursday, so no rerun for weather. The 7 with
+big changes were rerun with `shadow --official --game`, $0.93.
+**ARI @ SEA flips SEA -8.5 → ARI +8.5**, lean → coin flip (SEA by 9.9 → 6.6,
+Darnold Out for Drew Lock, plus Cross, Nelson, Williams and Shaheed Out).
+**GB @ NE flips GB +3 → NE -3**, coin flip → lean (NE by 2.5 → 4.9, Parsons Out).
+MIN +3 stays the side but drops best bet → lean (MIN by 1.2 → BUF by 1.3,
+Murray Out for Wentz). NYG -3 rises lean → best bet (NYG by 6.9 → 7.6, edge 4.57).
+KC -9.5 rises coin flip → lean (KC by 10.8 → 12.0). MIA +6.5 stays a coin flip,
+LV +9.5 stays a lean. Old picks superseded, synced. DEN/CAR, DAL/IND, CLE/NO,
+LA/WAS, HOU/LAC and TB/CHI left flagged, not rerun.
