@@ -791,3 +791,26 @@ Murray Out for Wentz). NYG -3 rises lean → best bet (NYG by 6.9 → 7.6, edge 
 KC -9.5 rises coin flip → lean (KC by 10.8 → 12.0). MIA +6.5 stays a coin flip,
 LV +9.5 stays a lean. Old picks superseded, synced. DEN/CAR, DAL/IND, CLE/NO,
 LA/WAS, HOU/LAC and TB/CHI left flagged, not rerun.
+
+**Week 9 graded (2026-11-12).** `refresh` took 2026 to 136 final scores. All 15
+graded: **8-7, +0.28 units**; best bet NYG -3 won 19-11. Season **70-62-4,
++1.64 units, ROI +0.012**. The Sunday recheck cost two games: both flips lost
+(ARI +8.5, NE -3) where the original SEA and GB would have won, so the
+first-run picks would have gone 10-5. The tier changes went the other way:
+KC and NYG were upgraded and won, and MIN was downgraded from best bet and lost by 17.
+
+**Post-mortems, Weeks 8 and 9 (2026-11-12).** 9 losses, 9 explained, 0 failed,
+$0.38. Week 8 tail: NE -7 `thesis_right_variance` (won the snaps by 0.22
+EPA/play, won by 5), PHI +6.5 `thesis_wrong` (stale team strength with WAS's
+receivers out). Week 9: 6 `thesis_wrong` / 1 `thesis_right_variance` (NO -3,
+lost by 1 on a -7.0 special-teams swing). The theme repeats: 4 of the 6 wrong
+calls (MIA, WAS, LV, ARI) had injuries and availability as the heaviest
+wrong factor, rated "strong", and two more (MIN, ARI) leaned on a small-sample
+backup QB read. Injury counts kept overriding a team-strength gap. Display only,
+as before.
+
+**Corrections after Week 9.** From 43 graded blind picks: team_strength
+×1.074 (was ×0.945 from 28, ×0.897 from 14), availability ×1.015 (was ×1.037),
+home_field ×0.972, quarterback ×1.034. Team strength has crossed back above ×1,
+so the Week 7 trim looks like noise, as flagged earlier. In-sample margin error
+12.50 → 12.45.
