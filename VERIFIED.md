@@ -814,3 +814,9 @@ as before.
 home_field ×0.972, quarterback ×1.034. Team strength has crossed back above ×1,
 so the Week 7 trim looks like noise, as flagged earlier. In-sample margin error
 12.50 → 12.45.
+
+**Week 10 picked (2026-11-12).** All 14 official blind picks stored, $1.80,
+on corrections from 43 graded games (team_strength ×1.074). Best bet KC -3
+(KC by 7.9, edge 4.86). Leans NYG -1.5, NE +2.5, MIN +3, CAR +2.5, BUF -8.5,
+JAX -10.5, ARI +9.5, SEA -6.5, SF -3.5, BAL -4.5. Coin flips HOU -4.5,
+IND -3.5, PIT +3.5. Synced to Firestore.
