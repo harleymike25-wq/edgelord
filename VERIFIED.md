@@ -820,3 +820,16 @@ on corrections from 43 graded games (team_strength ×1.074). Best bet KC -3
 (KC by 7.9, edge 4.86). Leans NYG -1.5, NE +2.5, MIN +3, CAR +2.5, BUF -8.5,
 JAX -10.5, ARI +9.5, SEA -6.5, SF -3.5, BAL -4.5. Coin flips HOU -4.5,
 IND -3.5, PIT +3.5. Synced to Firestore.
+
+**Week 10 rechecked (2026-11-15).** Thursday NYG -1.5 lost 24-21. `refresh` +
+`recheck --week 10` flagged 12 unplayed picks (3 for lines crossing a key number,
+1 for a QB change, the rest injuries). Weather compared by hand: HOU @ CLE was
+picked with no weather (now 15 mph, 47°F); nothing else material. The pack shows
+outdoor weather for KC @ ATL, MIA @ IND and SF @ DAL, which have roofs: a roof
+data gap, not fixed. All 11 Sunday games rerun on request with
+`shadow --official --game`, $1.45. **Three flips:** HOU -4.5 → **CLE +4.5**
+(coin flip → lean, HOU by 5.3 → 1.4); IND -3.5 → **MIA +4.5** (coin flip, line
+moved a point); SEA -6.5 → **LV +6.5** (lean → coin flip, Darnold Out for Lock).
+CAR +2.5 → +1.5 and ARI +9.5 drop lean → coin flip. Unchanged sides and tiers:
+KC -3 best bet, MIN +2.5, BUF -8.5, JAX -10.5, SF -4.5 leans, PIT +3.5 coin flip.
+LAC @ BAL (Monday) left flagged, not rerun. Old picks superseded, synced.
