@@ -201,6 +201,9 @@ def predict_one(conn, builder, game_id: str, *, effort=None, label="manual",
         print(f"{game_id}: FAILED {e}", file=sys.stderr)
         return None
 
+    # The line-anchored predictor, kept for backtests and comparison. Its
+    # recipe is not fingerprinted; the label keeps its picks apart in the record.
+    result["predictor_version"] = f"anchored-legacy+unfingerprinted {result.get('_model')}"
     pid = predictor.store(conn, game_id, features_id, pack, result, run_label=label)
     # A fresh pick answers whatever flagged the old one, however it was run.
     conn.execute("DELETE FROM recheck_flags WHERE game_id = ?", (game_id,))
@@ -243,7 +246,7 @@ def blind_one(conn, builder, game_id: str, base: dict, calib: dict, *,
     which is what the corrections and the record read.
     BudgetExceeded propagates so a caller can stop the whole run.
     """
-    from . import early, shadow
+    from . import early, shadow, version
     from . import predict as predictor
 
     pack = pack or builder.build(conn, game_id)
@@ -261,6 +264,8 @@ def blind_one(conn, builder, game_id: str, base: dict, calib: dict, *,
     official = calc["pick"]
     result["timing"] = early.recommend(
         pack, official["type"], official["side"], official["tier"])
+    result["predictor_version"] = version.stamp(
+        out.get("_model"), effort or config.PREDICT_EFFORT)
     pid = predictor.store(conn, game_id, features_id, pack, result,
                           run_label="blind", conviction=official["tier"])
     # A fresh pick answers whatever flagged the old one.
@@ -766,6 +771,33 @@ def cmd_early(args) -> int:
     return 0
 
 
+def cmd_versions(args) -> int:
+    """The record one predictor version at a time. Free."""
+    from . import track, version
+
+    db.init()
+    season = args.season or config.current_season()
+    with db.session() as conn:
+        if args.backfill:
+            print(f"labelled {version.backfill(conn, season)} earlier picks from the ledger")
+        rec = track.record(conn, season=season)
+
+    fp = version.fingerprint()
+    label = version.name()
+    print(f"current recipe  {label}+{fp}")
+    if label == "unregistered":
+        print("  NOT REGISTERED: the recipe changed without a new entry in "
+              "edgelord/version.py VERSIONS")
+    else:
+        print(f"  {version.VERSIONS[fp][1]}")
+    print(f"\n{'version':<30} {'record':<10} {'win%':>6} {'units':>7} {'avg CLV':>8}")
+    for name, b in rec.get("by_version", {}).items():
+        pct = "--" if b["win_pct"] is None else f"{b['win_pct']:.1%}"
+        clv = "--" if b["avg_clv"] is None else f"{b['avg_clv']:+.2f}"
+        print(f"{name:<30} {b['record']:<10} {pct:>6} {b['units']:>+7.2f} {clv:>8}")
+    return 0
+
+
 def cmd_shadow_report(args) -> int:
     from . import shadow
 
@@ -1008,6 +1040,15 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--week", type=int, required=True)
     s.add_argument("--season", type=int)
     s.set_defaults(func=cmd_early)
+
+    s = sub.add_parser(
+        "versions", help="the record split by predictor version (no cost)")
+    s.add_argument("--season", type=int)
+    s.add_argument(
+        "--backfill", action="store_true",
+        help="name picks made before stamping began, by week, from the ledger",
+    )
+    s.set_defaults(func=cmd_versions)
 
     s = sub.add_parser("report", help="render the slate report")
     s.add_argument("--week", type=int, required=True)

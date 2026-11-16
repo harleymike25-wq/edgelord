@@ -230,6 +230,17 @@ written lose at p < 0.10.
 
 The corrections are on the dashboard's record page.
 
+## Versions
+
+Every pick is stamped with the predictor that made it: a fingerprint of the
+prompt, the thresholds and the baseline's settings (`edgelord/version.py`).
+A test fails if any of them changes without a new named version, so the
+method cannot drift by accident.
+
+```powershell
+& $py -m edgelord.cli versions                      # the record one version at a time, free
+```
+
 ## Totals and timing
 
 The official pick is the over/under instead of the spread when the projected

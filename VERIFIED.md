@@ -970,3 +970,39 @@ times a week. In hindsight on the 55 graded blind picks: 4 points 12 picks
 Chosen for how often, about one a week, not for the record, which is three
 games. `TOTAL_PICK_EDGE = 7.0` in bot/edgelord/shadow.py; the tests now also
 pin that a 4.5-point gap stays a spread pick. Full suite 428 passing.
+
+**Every pick stamped with the predictor that made it (2026-11-16).** The
+season's record ran about eight methods together. `edgelord/version.py`
+fingerprints the recipe -- the blind prompt, reply schema, checklist, every
+tier and total threshold, the correction settings, the Elo and quarterback
+parameters, the timing rule -- and each blind pick stores
+`name+fingerprint model effort` in `predictions.predictor_version`. The model
+and effort come from this machine's settings, so they ride in the stamp and are
+not hashed. The learned multipliers are not hashed either: they move weekly by
+design and are stored on each pick. What the model is shown is not something
+code can fingerprint, so `PACK_REVISION` is bumped by hand when it changes.
+
+The current recipe is `blind-v7+ecbf3794c5`. `tests/test_version.py` fails
+when the fingerprint is not a named entry in `VERSIONS`, so a prompt or
+threshold cannot change without someone naming the new version. That test is
+the freeze: do not paste a new fingerprint in to pass it.
+
+`track.record` gains `by_version` and `edgelord versions` prints it, free.
+Picks from before today were labelled by week from this file
+(`versions --backfill`, 303 rows, each marked `+reconstructed`; coarse, since
+some changes landed mid-week). They sum to the season's 78-66-4:
+
+| version | weeks | record | units |
+|---|---|---|---|
+| v1 margin from scratch | 1 | 6-9-1 | -3.55 |
+| v2 anchored to the line | 2 | 10-6 | +3.09 |
+| v3 computed tiers | 3-5 | 26-18-3 | +5.64 |
+| v4 luck stats removed | 6 | 6-8 | -2.55 |
+| v5 blind | 7 | 5-9 | -4.45 |
+| v6 blind with corrections | 8-10 | 25-16 | +6.73 |
+
+No version has more than 47 picks, so none of these rows says anything on its
+own. The point is that from Week 11 one row, blind-v7, grows alone.
+
+10 tests; full suite 437 passing. No live pick has been stamped yet. `by_version`
+reaches the synced record but is not shown on the dashboard.

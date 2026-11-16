@@ -254,6 +254,8 @@ _ADDED_COLUMNS: tuple[tuple[str, str, str], ...] = (
     ("shadow_predictions", "calibration", "TEXT"),
     # Whether to bet the pick early or wait (edgelord/early.py), as JSON.
     ("predictions", "timing", "TEXT"),
+    # Which predictor made the pick (edgelord/version.py).
+    ("predictions", "predictor_version", "TEXT"),
 )
 
 

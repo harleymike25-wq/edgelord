@@ -168,6 +168,7 @@ def record(conn, *, season: int | None = None) -> dict:
     # filtered them; this clause is what stops them reaching the record itself.
     sql = (
         "SELECT p.pick_type, p.pick_side, p.confidence, p.conviction, "
+        "p.predictor_version, p.id AS prediction_id, "
         "r.pick_result, r.profit_units, r.clv_points, g.season "
         "FROM results r JOIN predictions p ON p.id = r.prediction_id "
         "JOIN games g ON g.game_id = r.game_id "
@@ -202,11 +203,21 @@ def record(conn, *, season: int | None = None) -> dict:
             "by_conviction": {},
             "by_market": {},
             "by_confidence": {},
+            "by_version": {},
         }
 
     buckets = {"50-59": (50, 59), "60-64": (60, 64), "65-69": (65, 69), "70+": (70, 101)}
 
     best = [r for r in rows if r["conviction"] == "best_bet"]
+
+    # One predictor at a time, oldest first. The overall line above runs every
+    # method the season has used together; these are the only rows that
+    # describe a single system.
+    from . import version
+
+    by_version: dict[str, list] = {}
+    for r in sorted(rows, key=lambda r: r["prediction_id"]):
+        by_version.setdefault(version.short(r["predictor_version"]), []).append(r)
 
     return {
         # The headline. Leans are opinions; best bets are what you would
@@ -224,6 +235,7 @@ def record(conn, *, season: int | None = None) -> dict:
             for m in ("spread", "total")
             if any(r["pick_type"] == m for r in rows)
         },
+        "by_version": {k: _summarise(v) for k, v in by_version.items()},
         # If the model's own confidence signal is meaningful, the high buckets
         # should outperform the low ones. Often they do not.
         "by_confidence": {
