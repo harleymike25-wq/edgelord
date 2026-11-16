@@ -833,3 +833,18 @@ moved a point); SEA -6.5 → **LV +6.5** (lean → coin flip, Darnold Out for Lo
 CAR +2.5 → +1.5 and ARI +9.5 drop lean → coin flip. Unchanged sides and tiers:
 KC -3 best bet, MIN +2.5, BUF -8.5, JAX -10.5, SF -4.5 leans, PIT +3.5 coin flip.
 LAC @ BAL (Monday) left flagged, not rerun. Old picks superseded, synced.
+
+**Week 10 graded, partly (2026-11-15).** `refresh` took 2026 to 148 final
+scores. 12 of 14 graded: **8-4, +3.27 units**; best bet KC -3 won by 22.
+Season **78-66-4, +4.91 units, ROI +0.034**. PIT/CIN (in progress) and
+LAC/BAL (Monday) pending. The morning reruns netted +1: CLE and MIA flips won
+where HOU and IND would have lost, the LV flip lost where SEA would have won
+(first-run picks 7-5). Across Weeks 9-10 the injury reruns are net -1.
+
+**Week 10 post-mortems (2026-11-15).** 4 losses, 4 explained, 0 failed, $0.18.
+Verdicts 3 `thesis_wrong` / 1 `thesis_right_variance` (NYG +1.5, won EPA/play,
+lost on a -5.4 special-teams swing). The wrong calls repeat Week 9: NE trusted a
+QB hot streak over a gutted run game; ARI under-penalised a small-sample backup
+QB; LV flipped on SEA offensive-line injuries with the pressure matchup even.
+Corrections from 55 graded blind picks: team_strength ×1.159 (×1.074 at 43),
+quarterback ×1.047, availability ×1.024. Display only, as before.
