@@ -921,3 +921,43 @@ unknown, as expected. 6 tests; full suite 395 passing. Not yet exercised by a
 real `recheck` run. This does not say which source is right, only that a
 disputed quarterback is not grounds to spend on a rerun or flip a pick. Undo:
 drop the `UNCONFIRMED` check in `recheck.worth_rerun`.
+
+**Total picks and an early-line call (2026-11-16).** Both at the owner's
+request, both computed, no prompt changed, no model calls, $0.
+
+*Totals.* The blind predictor's official pick is now the over/under instead of
+the spread when its projected total is 4+ points from the market's AND further
+off its line than the margin is off the spread (`TOTAL_PICK_EDGE` in
+bot/edgelord/shadow.py). A total pick is always a lean: there is no computed
+baseline for a total to agree with. The write-up opens with the total and
+keeps the spread lean in the same line. `calc["pick"]` carries the published
+pick; the spread fields are unchanged, so the corrections, the no-injury replay
+and the lessons tally read what they always did (the last two skip total
+picks). In hindsight on the 55 graded blind picks the rule fires 12 times,
+about three a slate: those totals went 8-4 where the spread picks they would
+have replaced went 5-7. Twelve games chosen after the fact, and over all 55 the
+projected total missed by more than the market's (RMSE 13.91 against 13.40):
+this is a preference, not a measured edge. Judge it on total picks from Week 11.
+
+*Early line.* `edgelord/early.py` gives each spread pick a timing call when
+kickoff is 36+ hours off, stores it in `predictions.timing` and shows it on the
+card. It uses key numbers only, because that is all the stored lines support.
+On 139 games of 2026 with 2+ snapshots 48+ hours out: a line that had moved
+kept going 24 times and reversed 28; the favourite's number grew 24 times and
+shrank 38; of 21 lines at 3.5, 7 closed on 3 and 4 moved further off; of 18 at
+2.5, 3 closed on 3. So: BET EARLY for a dog at +3.5/+7.5 or a favourite at
+-2.5/-6.5 (leans and best bets only), WAIT for a favourite at -3.5/-7.5 or a
+dog at +2.5/+6.5, otherwise no rush. Movement since the open is shown and never
+used. Totals are not rated. `edgelord early --week N` reprices the standing
+picks at today's number, free, and prints how past calls did against the close.
+
+The 3.5 figure is 21 games and the 7s are 12, so the rule rests on what a half
+point at 3 or 7 is worth, not on that sample. It grades itself: a BET EARLY
+call was right when the number then got worse, a WAIT when it got better.
+Betting early also gives up the injury report.
+
+| What | Evidence |
+|---|---|
+| Tests | `tests/test_early_and_totals.py`, 33 tests: every hook on both sides of 3 and 7, coin flips never rushed, movement sign, the total rule at and around its bar, spread fields untouched, storage with the total's own line, the report. Full suite 428 passing. `tsc --noEmit` clean. |
+| Real lines | Week 11 built free: 8 of 26 team-sides get a call (TEN +7.5, TB +3.5, MIN +3.5, WAS -3.5... and their opposites to wait), 18 no rush. `early --week 10` ran on the two unplayed picks and correctly rated neither, both under 36 hours out. |
+| **Not yet seen** | No pick has been made since, so no total pick has been produced by a live call, no `timing` is stored, and the card tag has not rendered in a browser. The first Week 11 run is the test. |

@@ -243,8 +243,8 @@ def blind_one(conn, builder, game_id: str, base: dict, calib: dict, *,
     which is what the corrections and the record read.
     BudgetExceeded propagates so a caller can stop the whole run.
     """
+    from . import early, shadow
     from . import predict as predictor
-    from . import shadow
 
     pack = pack or builder.build(conn, game_id)
     features_id = builder.store(conn, game_id, pack)
@@ -258,23 +258,35 @@ def blind_one(conn, builder, game_id: str, base: dict, calib: dict, *,
         return None
     calc = shadow.assemble(pack, out, base.get(game_id), calib)
     result = shadow.to_prediction(pack, out, calc)
+    official = calc["pick"]
+    result["timing"] = early.recommend(
+        pack, official["type"], official["side"], official["tier"])
     pid = predictor.store(conn, game_id, features_id, pack, result,
-                          run_label="blind", conviction=calc["tier"])
+                          run_label="blind", conviction=official["tier"])
     # A fresh pick answers whatever flagged the old one.
     conn.execute("DELETE FROM recheck_flags WHERE game_id = ?", (game_id,))
     conn.commit()
-    _print_blind(game_id, calc, f"#{pid}")
+    _print_blind(game_id, calc, f"#{pid}", result["timing"])
     if verbose:
         print(f"  {out['headline']}\n  {out['paragraph']}\n")
     return out
 
 
-def _print_blind(game_id: str, calc: dict, ref: str) -> None:
+_TIMING_WORDS = {"bet_now": "BET EARLY", "wait": "WAIT"}
+
+
+def _print_blind(game_id: str, calc: dict, ref: str, timing: dict | None = None) -> None:
+    pick = calc.get("pick") or {"type": "spread", "side": calc["pick_side"],
+                                "edge": calc["edge"], "tier": calc["tier"]}
+    base = calc["baseline_margin"]
+    side = (f"{pick['side']} {calc['total_line']:g}" if pick["type"] == "total"
+            else pick["side"])
+    when = _TIMING_WORDS.get((timing or {}).get("action"), "")
     print(
         f"{game_id:<20} {calc['winner'] or 'tie':<4} by {abs(calc['projected_margin']):>4.1f} "
-        f"({calc['home_win_prob']:.0%} home)  elo {calc['baseline_margin']:+.1f}  "
-        f"line {calc['line_home']}  -> {calc['pick_side']} {calc['tier']} "
-        f"edge {calc['edge']}  [{ref}]"
+        f"({calc['home_win_prob']:.0%} home)  elo {'--' if base is None else format(base, '+.1f')}  "
+        f"line {calc['line_home']}  -> {side} {pick['tier']} "
+        f"edge {pick['edge']}  [{ref}]" + (f"  {when}" if when else "")
     )
 
 
@@ -695,6 +707,65 @@ def cmd_lessons(args) -> int:
     return 0
 
 
+def cmd_early(args) -> int:
+    """Which of the week's picks to bet now and which to wait on. Free."""
+    import json
+
+    from . import early
+
+    db.init()
+    season = args.season or config.current_season()
+    with db.session() as conn:
+        refresh_lines(conn, season)
+        rows = conn.execute(
+            "SELECT g.game_id, g.away_team, g.home_team, p.pick_type, p.pick_side, "
+            "  p.conviction, f.payload "
+            "FROM predictions p JOIN games g ON g.game_id = p.game_id "
+            "LEFT JOIN features f ON f.id = p.features_id "
+            "WHERE g.season = ? AND g.week = ? AND g.home_score IS NULL "
+            "  AND p.superseded_by IS NULL AND p.run_label != 'backtest' "
+            "ORDER BY g.gameday, g.gametime",
+            (season, args.week),
+        ).fetchall()
+        calls = []
+        for r in rows:
+            pack = json.loads(r["payload"] or "{}")
+            # Judge today's number, not the one the pick was made at.
+            from .features import market
+            game = dict(conn.execute(
+                "SELECT * FROM games WHERE game_id = ?", (r["game_id"],)).fetchone())
+            pack["market"] = market.block(conn, game)
+            calls.append((r, early.recommend(
+                pack, r["pick_type"], r["pick_side"], r["conviction"])))
+        graded = early.report(conn, season)
+
+    if not calls:
+        print(f"no unplayed picks for week {args.week}")
+    for action, title in (("bet_now", "BET EARLY"), ("wait", "WAIT"),
+                          ("no_rush", "NO RUSH"), ("not_rated", "NOT RATED")):
+        group = [(r, t) for r, t in calls if t["action"] == action]
+        if not group:
+            continue
+        print(f"\n{title}")
+        for r, t in group:
+            moved = t.get("moved_since_open")
+            note = "" if not moved else (
+                f"  (has moved {abs(moved):g} {'against' if moved > 0 else 'toward'} you since it opened)")
+            print(f"  {r['away_team']} at {r['home_team']}: {r['pick_side']} "
+                  f"[{r['conviction']}]  {t['reason']}{note}")
+
+    print("\nHow the calls have done so far (number at the pick against the close):")
+    for action, title in (("bet_now", "bet early"), ("wait", "wait"), ("no_rush", "no rush")):
+        b = graded[action]
+        if not b["picks"]:
+            print(f"  {title:<10} no graded picks yet")
+            continue
+        print(f"  {title:<10} {b['picks']} picks: number got worse {b['got_worse']}, "
+              f"better {b['got_better']}, unchanged {b['unchanged']}; "
+              f"average {b['avg_move']:+.2f} points")
+    return 0
+
+
 def cmd_shadow_report(args) -> int:
     from . import shadow
 
@@ -929,6 +1000,14 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--season", type=int)
     s.add_argument("--verbose", action="store_true", help="list each tagged pick")
     s.set_defaults(func=cmd_lessons)
+
+    s = sub.add_parser(
+        "early",
+        help="which of a week's picks to bet now and which to wait on (no cost)",
+    )
+    s.add_argument("--week", type=int, required=True)
+    s.add_argument("--season", type=int)
+    s.set_defaults(func=cmd_early)
 
     s = sub.add_parser("report", help="render the slate report")
     s.add_argument("--week", type=int, required=True)

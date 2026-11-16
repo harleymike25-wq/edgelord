@@ -44,6 +44,27 @@ export function ConvictionTag({ conviction }: { conviction?: string }) {
   return null;
 }
 
+/**
+ * Bet it now, or wait for a better number. Shown only before the game is
+ * played, and only when there is a call to make: most picks are "no rush".
+ */
+export function TimingTag({ game, withReason = false }: { game: Game; withReason?: boolean }) {
+  const t = game.prediction?.timing;
+  if (!t || game.result || finalScore(game)) return null;
+  if (t.action !== "bet_now" && t.action !== "wait") return null;
+  const tag = (
+    <span className={`timing-tag ${t.action}`} title={t.reason}>
+      {t.action === "bet_now" ? "BET EARLY" : "WAIT ON THE NUMBER"}
+    </span>
+  );
+  if (!withReason) return tag;
+  return (
+    <p className="timing-line">
+      {tag} {t.reason}
+    </p>
+  );
+}
+
 export function GameCard({ game }: { game: Game }) {
   const p = game.prediction;
   const score = finalScore(game);
@@ -64,6 +85,7 @@ export function GameCard({ game }: { game: Game }) {
         <div className="pick-stack">
           <ConvictionTag conviction={p?.conviction} />
           <PickBadge game={game} />
+          <TimingTag game={game} />
           {p && p.pick_type !== "pass" && (
             <div className="conf-pct">{p.confidence}% confidence</div>
           )}

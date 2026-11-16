@@ -70,7 +70,7 @@ def _game_documents(conn, season: int, week: int | None) -> list[dict]:
                p.pick_type, p.pick_side, p.conviction, p.line_at_pick,
                p.price_at_pick, p.confidence, p.projected_margin,
                p.projected_total, p.headline, p.paragraph, p.key_factors,
-               p.decision_table,
+               p.decision_table, p.timing,
                f.data_gaps, f.payload,
                r.pick_result, r.profit_units, r.clv_points,
                r.closing_line, r.closing_total,
@@ -181,6 +181,7 @@ def _game_documents(conn, season: int, week: int | None) -> list[dict]:
                 "decision_table": json.loads(r["decision_table"] or "[]"),
                 "data_gaps": json.loads(r["data_gaps"] or "[]"),
                 "edge": _pick_edge(r),
+                "timing": json.loads(r["timing"]) if r["timing"] else None,
             }
         # The pick's inputs changed after it was made and it has not been rerun.
         # Shown on the card so a stale pick never reads as a current one.

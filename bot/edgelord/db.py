@@ -252,6 +252,8 @@ _ADDED_COLUMNS: tuple[tuple[str, str, str], ...] = (
     # Blind picks: each factor's raw points and the corrections applied to them.
     ("predictions", "factor_points", "TEXT"),
     ("shadow_predictions", "calibration", "TEXT"),
+    # Whether to bet the pick early or wait (edgelord/early.py), as JSON.
+    ("predictions", "timing", "TEXT"),
 )
 
 

@@ -28,6 +28,17 @@ export interface Prediction {
   data_gaps: string[];
   /** Points the projection beat the line by, toward the pick. At or under 1 is a coin flip. */
   edge?: number | null;
+  /** Whether to bet the pick early in the week or wait, from key numbers. */
+  timing?: Timing | null;
+}
+
+export interface Timing {
+  action: "bet_now" | "wait" | "no_rush" | "not_rated";
+  /** Plain-language reason, naming the number. */
+  reason: string;
+  hours_to_kickoff?: number | null;
+  /** Points the line has moved since it opened; positive is worse for the pick. */
+  moved_since_open?: number;
 }
 
 export interface Result {

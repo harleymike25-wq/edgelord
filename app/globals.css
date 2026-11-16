@@ -498,3 +498,13 @@ table.stacked .cell-u { display: block; font-size: .78rem; }
 .ou-result.win  { color: var(--win); font-weight: 600; }
 .ou-result.loss { color: var(--loss); font-weight: 600; }
 .ou-result.push { color: var(--push); }
+
+/* ---- bet early / wait, beside the pick ---- */
+.timing-tag {
+  display: inline-block; font-size: .62rem; font-weight: 700; letter-spacing: .06em;
+  padding: .12rem .4rem; border-radius: 4px; vertical-align: middle;
+}
+.timing-tag.bet_now { color: var(--win); border: 1px solid #1f5236; background: #14301f; }
+.timing-tag.wait { color: var(--warn); border: 1px solid #4a3a12; background: #241d0c; }
+.timing-line { font-size: .85rem; color: var(--muted, #9aa4ae); margin: .5rem 0; }
+.timing-line .timing-tag { margin-right: .4rem; }

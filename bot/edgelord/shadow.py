@@ -83,6 +83,17 @@ BEST_BET_EDGE = 4.0
 BEST_BET_BASELINE_EDGE = 1.0
 LEAN_EDGE = 1.0
 
+# The official pick is the total instead of the spread when the projected
+# total is at least this far from the market's AND further off its line than
+# the margin is off the spread. Added 2026-11-16 at the owner's call. In
+# hindsight on 55 blind picks this fired 12 times (about three a slate): the
+# totals went 8-4 where the spread picks they would have replaced went 5-7.
+# That is twelve games picked after the fact, and across all 55 the projected
+# total missed by more than the market's did (RMSE 13.91 against 13.40), so
+# it is a preference, not a proven edge. Total picks are never best bets:
+# there is no computed baseline for a total to agree with.
+TOTAL_PICK_EDGE = 4.0
+
 
 # --- what the model sees -----------------------------------------------------
 
@@ -434,7 +445,28 @@ def assemble(pack: dict, out: dict, baseline: dict | None,
         else:
             tier = "coin_flip"
 
+    # The total, compared to its own line the same way.
+    total_line = market.get("current_total")
+    projected_total = out.get("projected_total")
+    total_side = total_edge = None
+    if total_line is not None and projected_total is not None:
+        t_diff = float(projected_total) - float(total_line)
+        if t_diff:
+            total_side = "over" if t_diff > 0 else "under"
+            total_edge = round(abs(t_diff), 2)
+
+    # What is published. The spread fields below stay the spread's whatever is
+    # chosen, so the corrections and the replays keep reading the same thing.
+    official = {"type": "spread", "side": pick, "edge": edge, "tier": tier}
+    if (total_edge is not None and total_edge >= TOTAL_PICK_EDGE
+            and total_edge > (edge or 0.0)):
+        official = {"type": "total", "side": total_side, "edge": total_edge,
+                    "tier": "lean"}
+
     return {
+        "pick": official,
+        "total_side": total_side,
+        "total_edge": total_edge,
         "raw_points": raw,
         "signed_points": signed,
         "raw_margin": round(sum(raw.values()), 2),
@@ -502,24 +534,36 @@ def to_prediction(pack: dict, out: dict, calc: dict) -> dict:
         market = "a pick'em"
     else:
         market = f"{home if line_home > 0 else away} by {_fmt(abs(line_home))}"
-    lead = f"Our number: {ours}. The market: {market}. The pick: {pick} {shown}."
-
+    official = calc.get("pick") or {"type": "spread", "side": pick,
+                                    "edge": calc["edge"], "tier": calc["tier"]}
     headline = out["headline"].rstrip(".")
-    if winner and pick != winner:
-        headline += f", but closer than the market thinks: {pick} {shown}"
+    if official["type"] == "total":
+        total_line = calc["total_line"]
+        lead = (
+            f"Our total: {_fmt(round(float(out['projected_total']), 1))}. "
+            f"The market: {_fmt(total_line)}. "
+            f"The pick: {official['side']} {_fmt(total_line)}. "
+            f"On the spread we make it {ours} against {market}"
+            + (f", a lean to {pick} {shown}." if pick else ".")
+        )
+        headline += f". The play is the {official['side']} {_fmt(total_line)}"
+    else:
+        lead = f"Our number: {ours}. The market: {market}. The pick: {pick} {shown}."
+        if winner and pick != winner:
+            headline += f", but closer than the market thinks: {pick} {shown}"
 
     return {
-        "pick_type": "spread",
-        "pick_side": pick,
-        # Chance the pick covers, from the edge over the line.
-        "confidence": round(100 * win_prob(calc["edge"] or 0.0)),
+        "pick_type": official["type"],
+        "pick_side": official["side"],
+        # Chance the pick wins, from the edge over its line.
+        "confidence": round(100 * win_prob(official["edge"] or 0.0)),
         "projected_margin": margin,
         "projected_total": out["projected_total"],
         "headline": headline,
         "paragraph": f"{lead}\n\n{out['paragraph']}",
         "key_factors": key_factors,
         "decision_table": rows,
-        "conviction": calc["tier"],
+        "conviction": official["tier"],
         "factor_points": {"raw": calc.get("raw_points"), "source": "model",
                           **(calc.get("calibration") or {})},
         "_model": out.get("_model"),

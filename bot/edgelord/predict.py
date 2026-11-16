@@ -701,8 +701,8 @@ def store(conn, game_id: str, features_id: int | None, pack: dict, result: dict,
         "INSERT INTO predictions (game_id, features_id, model, created_at, run_label, "
         "pick_type, pick_side, conviction, model_conviction, line_at_pick, "
         "price_at_pick, confidence, projected_margin, projected_total, headline, "
-        "paragraph, key_factors, decision_table, factor_points) "
-        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "paragraph, key_factors, decision_table, factor_points, timing) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (
             game_id,
             features_id,
@@ -723,6 +723,7 @@ def store(conn, game_id: str, features_id: int | None, pack: dict, result: dict,
             json.dumps(result.get("key_factors", [])),
             json.dumps(result.get("decision_table", [])),
             json.dumps(result["factor_points"]) if result.get("factor_points") else None,
+            json.dumps(result["timing"]) if result.get("timing") else None,
         ),
     )
     new_id = cur.lastrowid
