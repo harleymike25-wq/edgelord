@@ -189,6 +189,14 @@ class FeatureBuilder:
             self._reg_cache[key] = regression.table(self.schedules, self.pbp, season, week)
         return self._reg_cache[key]
 
+    def _schedule_qb(self, game_id: str, side: str) -> str | None:
+        """The schedule's projected (or actual) starter id for one side."""
+        col = f"{side}_qb_id"
+        if self.schedules.is_empty() or col not in self.schedules.columns:
+            return None
+        hit = self.schedules.filter(pl.col("game_id") == game_id)
+        return hit[col][0] if hit.height else None
+
     def _team_block(self, game: dict, team: str, gaps: list[str]) -> dict:
         season, week = game["season"], game["week"]
         side = "home" if team == game["home_team"] else "away"
@@ -225,9 +233,19 @@ class FeatureBuilder:
 
         # The depth chart keeps an injured starter at QB1, so name the one
         # expected to play and give his own numbers when there is any doubt.
+        depth_qbs = depth.pop("quarterbacks", [])
         qb_situation = players.quarterback_situation(
-            self.pbp, self.injuries, depth.pop("quarterbacks", []), team, season, week
+            self.pbp, self.injuries, depth_qbs, team, season, week
         )
+        # Two views of who starts: ours (depth chart plus the injury report)
+        # and the schedule's own projected starter. They disagreed on 3 of 16
+        # flagged quarterbacks in Weeks 7-10, so a rerun for a quarterback
+        # change waits until they agree (see recheck.py).
+        expected_id = (
+            qb_situation["expected_starter_id"] if qb_situation
+            else depth_qbs[0]["gsis_id"] if depth_qbs else None
+        )
+        schedule_id = self._schedule_qb(game["game_id"], side)
         quarterback = (
             qb_situation["expected_starter"] if qb_situation
             else depth.get("quarterback") or game.get(f"{side}_qb")
@@ -238,6 +256,13 @@ class FeatureBuilder:
             "coach": game.get(f"{side}_coach"),
             "quarterback": quarterback,
             "quarterback_situation": qb_situation,
+            # For the recheck only; removed from what the model sees.
+            "quarterback_sources": {
+                "expected_id": expected_id,
+                "schedule_id": schedule_id,
+                "agree": (expected_id == schedule_id
+                          if expected_id and schedule_id else None),
+            },
             "division": stadiums.DIVISIONS.get(team),
             "efficiency_season": _split_sides(season_eff) if season_eff else None,
             f"efficiency_last_{RECENT_WEEKS}": _split_sides(recent_eff) if recent_eff else None,

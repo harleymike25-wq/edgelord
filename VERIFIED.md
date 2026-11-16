@@ -904,3 +904,20 @@ never ran beside the live predictor. Scheduled tasks are still not registered.
 The roofed-stadium weather gap (2026-11-15) is still open.
 
 Full suite 389 passing. `tsc --noEmit` clean.
+
+**A quarterback change is rerun only when two sources agree (2026-11-16).** At
+the owner's call, following the finding above. Each team block in the pack now
+carries `quarterback_sources`: our expected starter's id, the schedule's
+projected starter's id, and whether they agree. `model_view` removes it, so no
+prompt changes. In `recheck`, when the fresh pack shows the two naming different
+starters, an expected-starter change or a starting-quarterback status change is
+listed as `unconfirmed ...` and `worth_rerun` skips it; the log tags the game
+"quarterback unconfirmed, no rerun". A key-number line move on the same game
+still earns a rerun. When the schedule names nobody (games more than a week
+out) or the pack predates the field, the change counts as before. Built free on
+Week 11: 24 team-sides agree, 2 disagree (BAL: ours Brissett; ARI: ours Beck,
+the two teams where ours was wrong or disputed in Week 10); Week 12 reads
+unknown, as expected. 6 tests; full suite 395 passing. Not yet exercised by a
+real `recheck` run. This does not say which source is right, only that a
+disputed quarterback is not grounds to spend on a rerun or flip a pick. Undo:
+drop the `UNCONFIRMED` check in `recheck.worth_rerun`.

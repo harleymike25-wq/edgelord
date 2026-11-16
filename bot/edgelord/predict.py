@@ -506,6 +506,7 @@ def model_view(pack: dict) -> dict:
         block = dict(pack.get(side) or {})
         reg = block.pop("regression_indicators", None)
         block.pop("prior_season_record", None)
+        block.pop("quarterback_sources", None)
         if reg:
             block["season_record"] = {k: reg[k] for k in SEASON_RECORD_FIELDS if k in reg}
         sit = block.get("quarterback_situation")

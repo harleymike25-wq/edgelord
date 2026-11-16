@@ -21,6 +21,14 @@ have rerun DEN/LAC because Trey Lance went Doubtful while Herbert started.
 Practice-participation churn on its own does not count. It moves every day and
 a rerun on each would cost a slate a week.
 
+A quarterback change is only believed when two sources agree on the starter:
+our expected starter (depth chart plus injury report) and the schedule's own
+projection. In Weeks 7-10 ours was wrong 3 times in 16, and one of them (SEA
+Week 10: we said Lock, Darnold started) flipped a pick that then lost. When the
+fresh pack shows the two disagreeing, the change is listed as unconfirmed and
+not rerun. When the schedule names nobody there is nothing to check against,
+and the change counts as before.
+
 Flagged is not the same as rerun. Since 2026-11-15 only a quarterback change or
 a line move earns a rerun (`worth_rerun`). The other injury flags are still
 listed, but they are not rerun: across Weeks 9-10 the injury-only reruns were
@@ -87,13 +95,28 @@ def _matters(p: dict, starting_qbs: set[str]) -> bool:
     return bool(p.get("starter")) or (p.get("snap_pct_prior") or 0) >= SNAP_SHARE
 
 
+UNCONFIRMED = "unconfirmed"
+
+
+def _sources_disagree(pack: dict, side: str) -> bool:
+    """True only when both quarterback sources are present and name different starters."""
+    return ((pack.get(side) or {}).get("quarterback_sources") or {}).get("agree") is False
+
+
 def injury_changes(old: dict, new: dict) -> list[str]:
     reasons = []
     for side in ("home", "away"):
         team = (new.get("game") or {}).get(f"{side}_team") or side
+        doubt = _sources_disagree(new, side)
         before, after = _expected_qb(old, side), _expected_qb(new, side)
         if before and after and before != after:
-            reasons.append(f"{team} expected QB {before} -> {after}")
+            if doubt:
+                reasons.append(
+                    f"{UNCONFIRMED} {team} quarterback change {before} -> {after}: "
+                    "the schedule lists a different starter"
+                )
+            else:
+                reasons.append(f"{team} expected QB {before} -> {after}")
 
         starting_qbs = {q for q in (before, after) if q}
         o, n = _players(old, side), _players(new, side)
@@ -108,6 +131,12 @@ def injury_changes(old: dict, new: dict) -> list[str]:
             if _is_qb(p) or "out" in (a, b):
                 was = (o.get(name) or {}).get("status") or "not listed"
                 now = (n.get(name) or {}).get("status") or "not listed"
+                if _is_qb(p) and doubt:
+                    reasons.append(
+                        f"{UNCONFIRMED} {team} quarterback status, {name}: {was} -> {now} "
+                        "(the schedule lists a different starter)"
+                    )
+                    continue
                 reasons.append(f"{team} {p.get('position') or ''} {name}: {was} -> {now}".replace("  ", " "))
     return reasons
 
@@ -115,6 +144,8 @@ def injury_changes(old: dict, new: dict) -> list[str]:
 def worth_rerun(reasons: list[str]) -> bool:
     """A quarterback or a line change. Reads the strings the two functions here write."""
     for r in reasons:
+        if r.startswith(UNCONFIRMED):
+            continue
         if r == "no pick yet" or r.startswith(("spread ", "total ")):
             return True
         if " QB " in r.split(":")[0]:   # "SEA expected QB ..." or "SEA QB Sam Darnold: ..."

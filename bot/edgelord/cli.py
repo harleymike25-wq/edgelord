@@ -297,7 +297,12 @@ def cmd_recheck(args) -> int:
             print("no changes: every unplayed pick still matches its inputs")
             return 0
         for f in flagged:
-            tag = "RERUN" if recheck.worth_rerun(f["reasons"]) else "injury only, no rerun"
+            if recheck.worth_rerun(f["reasons"]):
+                tag = "RERUN"
+            elif any(r.startswith(recheck.UNCONFIRMED) for r in f["reasons"]):
+                tag = "quarterback unconfirmed, no rerun"
+            else:
+                tag = "injury only, no rerun"
             print(f"{f['game_id']}  [{tag}]")
             for r in f["reasons"]:
                 print(f"   - {r}")

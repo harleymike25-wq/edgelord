@@ -259,3 +259,46 @@ class TestWorthRerun:
         old = _pack(away_inj=[_inj("Zay Flowers", "Limited Participation in Practice")])
         new = _pack(away_inj=[_inj("Zay Flowers", "Out")])
         assert not recheck.worth_rerun(recheck.injury_changes(old, new))
+
+
+class TestQuarterbackSourcesMustAgree:
+    """A quarterback change is rerun only when the schedule names the same starter."""
+
+    def _packs(self, agree):
+        old = _pack(away_situation={"expected_starter": "Sam Darnold"})
+        new = _pack(away_situation={"expected_starter": "Drew Lock"})
+        new["away"]["quarterback_sources"] = {
+            "expected_id": "lock", "schedule_id": "lock" if agree else "darnold",
+            "agree": agree,
+        }
+        return old, new
+
+    def test_agreeing_sources_earn_a_rerun(self):
+        reasons = recheck.injury_changes(*self._packs(True))
+        assert recheck.worth_rerun(reasons)
+
+    def test_disagreeing_sources_are_listed_but_not_rerun(self):
+        reasons = recheck.injury_changes(*self._packs(False))
+        assert len(reasons) == 1 and reasons[0].startswith(recheck.UNCONFIRMED)
+        assert "Sam Darnold -> Drew Lock" in reasons[0]
+        assert not recheck.worth_rerun(reasons)
+
+    def test_no_schedule_starter_counts_as_before(self):
+        reasons = recheck.injury_changes(*self._packs(None))
+        assert recheck.worth_rerun(reasons)
+
+    def test_a_pack_from_before_the_field_existed_counts_as_before(self):
+        old = _pack(away_situation={"expected_starter": "Sam Darnold"})
+        new = _pack(away_situation={"expected_starter": "Drew Lock"})
+        assert recheck.worth_rerun(recheck.injury_changes(old, new))
+
+    def test_a_line_move_still_reruns_an_unconfirmed_game(self):
+        reasons = recheck.injury_changes(*self._packs(False))
+        reasons.append("spread +3 -> +2.5 (home), crossed a key number")
+        assert recheck.worth_rerun(reasons)
+
+    def test_the_model_never_sees_the_sources(self):
+        from edgelord.predict import model_view
+        _, new = self._packs(False)
+        assert "quarterback_sources" not in model_view(new)["away"]
+        assert "quarterback_sources" in new["away"]
