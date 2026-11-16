@@ -233,8 +233,8 @@ The corrections are on the dashboard's record page.
 ## Totals and timing
 
 The official pick is the over/under instead of the spread when the projected
-total is 4+ points from the market's and further off its line than the margin
-is off the spread. A total pick is always a lean.
+total is 7+ points from the market's and further off its line than the margin
+is off the spread, about once a week. A total pick is always a lean.
 
 Each spread pick made 36+ hours before kickoff also gets a timing call from
 key numbers: bet early when you hold the good side of 3 or 7 by a half point,

@@ -961,3 +961,12 @@ Betting early also gives up the injury report.
 | Tests | `tests/test_early_and_totals.py`, 33 tests: every hook on both sides of 3 and 7, coin flips never rushed, movement sign, the total rule at and around its bar, spread fields untouched, storage with the total's own line, the report. Full suite 428 passing. `tsc --noEmit` clean. |
 | Real lines | Week 11 built free: 8 of 26 team-sides get a call (TEN +7.5, TB +3.5, MIN +3.5, WAS -3.5... and their opposites to wait), 18 no rush. `early --week 10` ran on the two unplayed picks and correctly rated neither, both under 36 hours out. |
 | **Not yet seen** | No pick has been made since, so no total pick has been produced by a live call, no `timing` is stored, and the card tag has not rendered in a browser. The first Week 11 run is the test. |
+
+**Total-pick bar raised to 7 points (2026-11-16).** Same day, before any pick
+was made under the 4-point bar. The owner's aim is the old behaviour, a total
+only when something stands out (twice in Weeks 1-6), and 4 points fired three
+times a week. In hindsight on the 55 graded blind picks: 4 points 12 picks
+(8-4), 5 points 10 (6-4), 6 points 7 (4-3), 7 points 3 (1-2), 8 points none.
+Chosen for how often, about one a week, not for the record, which is three
+games. `TOTAL_PICK_EDGE = 7.0` in bot/edgelord/shadow.py; the tests now also
+pin that a 4.5-point gap stays a spread pick. Full suite 428 passing.

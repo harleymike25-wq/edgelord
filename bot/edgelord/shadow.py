@@ -85,14 +85,16 @@ LEAN_EDGE = 1.0
 
 # The official pick is the total instead of the spread when the projected
 # total is at least this far from the market's AND further off its line than
-# the margin is off the spread. Added 2026-11-16 at the owner's call. In
-# hindsight on 55 blind picks this fired 12 times (about three a slate): the
-# totals went 8-4 where the spread picks they would have replaced went 5-7.
-# That is twelve games picked after the fact, and across all 55 the projected
-# total missed by more than the market's did (RMSE 13.91 against 13.40), so
-# it is a preference, not a proven edge. Total picks are never best bets:
-# there is no computed baseline for a total to agree with.
-TOTAL_PICK_EDGE = 4.0
+# the margin is off the spread. Added 2026-11-16 at the owner's call, to bring
+# back what the line-anchored predictor did when it "saw something juicy": it
+# took a total twice in six weeks. The blind model never sees a line, so the
+# noticing has to be done here. Set first at 4.0, which in hindsight on 55
+# blind picks fired 12 times (three a week); raised the same day to 7.0, which
+# fired 3 times (about one a week, 1-2). Neither record means anything, and
+# across all 55 the projected total missed by more than the market's did (RMSE
+# 13.91 against 13.40): the bar sets how often, not how well. Total picks are
+# never best bets: there is no computed baseline for a total to agree with.
+TOTAL_PICK_EDGE = 7.0
 
 
 # --- what the model sees -----------------------------------------------------
