@@ -341,6 +341,31 @@ export interface Calibration {
   rmse_calibrated: number | null;
 }
 
+/** The blind picks replayed with injury points at zero (bot/edgelord/no_injury.py). */
+export interface NoInjuryTally {
+  record: string;
+  wins: number;
+  losses: number;
+  units: number;
+}
+
+export interface NoInjuryPeriod {
+  games: number;
+  /** Games where the replay took the other side. */
+  differ: number;
+  as_made: NoInjuryTally;
+  no_injury: NoInjuryTally;
+}
+
+export interface NoInjury {
+  /** First week of the real test; earlier weeks were seen before it was set up. */
+  start_week: number;
+  hindsight: NoInjuryPeriod;
+  test: NoInjuryPeriod;
+  /** Unplayed games where the replay takes the other side. */
+  upcoming: { game_id: string; week: number; pick: string; no_injury: string }[];
+}
+
 export interface Evidence {
   verdict: Verdict;
   /** 0-100, dominated by sample size and closing line value. */
@@ -377,6 +402,7 @@ export interface SeasonPayload {
   weekly: WeeklyPoint[];
   evidence?: Evidence;
   calibration?: Calibration;
+  no_injury?: NoInjury;
   /** True when the data is placeholder output from scripts/seed_dev_snapshot.py. */
   synthetic: boolean;
   /** Which backend served this payload. */

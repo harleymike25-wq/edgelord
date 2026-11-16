@@ -20,6 +20,11 @@ have rerun DEN/LAC because Trey Lance went Doubtful while Herbert started.
 
 Practice-participation churn on its own does not count. It moves every day and
 a rerun on each would cost a slate a week.
+
+Flagged is not the same as rerun. Since 2026-11-15 only a quarterback change or
+a line move earns a rerun (`worth_rerun`). The other injury flags are still
+listed, but they are not rerun: across Weeks 9-10 the injury-only reruns were
+net -1 game, and the picks where injury points favoured the side were 10-12.
 """
 
 from __future__ import annotations
@@ -105,6 +110,16 @@ def injury_changes(old: dict, new: dict) -> list[str]:
                 now = (n.get(name) or {}).get("status") or "not listed"
                 reasons.append(f"{team} {p.get('position') or ''} {name}: {was} -> {now}".replace("  ", " "))
     return reasons
+
+
+def worth_rerun(reasons: list[str]) -> bool:
+    """A quarterback or a line change. Reads the strings the two functions here write."""
+    for r in reasons:
+        if r == "no pick yet" or r.startswith(("spread ", "total ")):
+            return True
+        if " QB " in r.split(":")[0]:   # "SEA expected QB ..." or "SEA QB Sam Darnold: ..."
+            return True
+    return False
 
 
 def line_changes(old: dict, new: dict, pick_type: str | None) -> list[str]:

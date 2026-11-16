@@ -17,7 +17,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 
-from . import calibration, config, evidence, track
+from . import calibration, config, evidence, no_injury, track
 
 # Written for the dashboard to consume in development, when there is no
 # Firebase project to point at yet. The Next.js app is the repository root and
@@ -279,6 +279,9 @@ def build_payload(conn, season: int, *, week: int | None = None) -> dict:
         # What the blind predictor has learned about its own factor points --
         # the one place results feed back, so it is shown, never hidden.
         "calibration": calibration.current(conn),
+        # The blind picks replayed with injury points at zero, graded beside
+        # the real ones. Display only: nothing here changes a pick.
+        "no_injury": no_injury.compare(conn, season),
         "synthetic": False,
     }
 
@@ -387,6 +390,7 @@ def push(conn, season: int, *, week: int | None = None, snapshot: bool = True) -
             # this project is trying to avoid.
             "evidence": payload["evidence"],
             "calibration": payload["calibration"],
+            "no_injury": payload["no_injury"],
         },
     )
     if rating_doc is not None:

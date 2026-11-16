@@ -238,12 +238,14 @@ def cmd_recheck(args) -> int:
             print("no changes: every unplayed pick still matches its inputs")
             return 0
         for f in flagged:
-            print(f"{f['game_id']}")
+            tag = "RERUN" if recheck.worth_rerun(f["reasons"]) else "injury only, no rerun"
+            print(f"{f['game_id']}  [{tag}]")
             for r in f["reasons"]:
                 print(f"   - {r}")
+        worth = [f for f in flagged if recheck.worth_rerun(f["reasons"])]
 
         if not args.run:
-            print(f"\n{len(flagged)} flagged; not rerun (no --run)")
+            print(f"\n{len(flagged)} flagged, {len(worth)} worth a rerun; not rerun (no --run)")
             return 0
 
         est = recheck.call_estimate(conn)
@@ -251,7 +253,7 @@ def cmd_recheck(args) -> int:
         if args.allow is not None:
             cap = spent + args.allow
         print(f"\nweek {args.week} recheck spend ${spent:.2f} of ${cap:.2f} cap, ~${est:.2f}/call")
-        for f in flagged:
+        for f in worth:
             if spent + est > cap:
                 print(f"{f['game_id']}: left flagged, cap reached")
                 continue

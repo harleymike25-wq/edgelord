@@ -7,6 +7,7 @@ import type {
   Calibration,
   Evidence,
   Game,
+  NoInjury,
   RatingsPayload,
   RecordBlock,
   SeasonPayload,
@@ -59,6 +60,7 @@ async function loadFromFirestore(season: number): Promise<SeasonPayload> {
         generated_at: string;
         evidence?: Evidence;
         calibration?: Calibration;
+        no_injury?: NoInjury;
       }
     | undefined;
 
@@ -72,6 +74,7 @@ async function loadFromFirestore(season: number): Promise<SeasonPayload> {
     // combination this project exists to avoid.
     evidence: meta?.evidence,
     calibration: meta?.calibration,
+    no_injury: meta?.no_injury,
     synthetic: false,
     source: "firestore",
   };

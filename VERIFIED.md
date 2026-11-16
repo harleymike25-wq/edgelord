@@ -848,3 +848,20 @@ QB hot streak over a gutted run game; ARI under-penalised a small-sample backup
 QB; LV flipped on SEA offensive-line injuries with the pressure matchup even.
 Corrections from 55 graded blind picks: team_strength ×1.159 (×1.074 at 43),
 quarterback ×1.047, availability ×1.024. Display only, as before.
+
+**Injury reruns stopped, no-injury replay started (2026-11-15).** The owner's
+read after Week 10: injuries keep tipping close picks the wrong way (ARI, LV).
+Measured on the 55 graded blind picks: injury points favouring the pick 10-12,
+the rest 16-8; replayed with injuries at zero 33-22 against 30-25 as made, but
+halved 29-26 and capped at ±0.5 30-25. That is three games, in hindsight, so the
+model is unchanged. Two changes, both computed, nothing in a prompt:
+`recheck` now tags flags `[RERUN]` only for a QB change, a key-number line move
+or no pick yet; injury-only flags are listed and not rerun (`recheck --run`
+skips them). `no_injury.py` replays every graded pick from its stored factor
+points with availability zeroed, graded on the pick's own line, and `/record`
+shows it beside the real record. Pre-registered: Weeks 1-10 are hindsight, the
+test runs from Week 11. If the no-injury column keeps winning there, the factor
+comes out. Tests: `test_no_injury.py` (7), `TestWorthRerun` (7) plus the
+`--run` skip; full suite 358 passing. `tsc --noEmit` clean, panel checked in
+the browser at desktop and 375px, 0 console errors. Undo: drop the `worth`
+filter in `cmd_recheck`.

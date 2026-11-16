@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { clv, COIN_FLIP_EDGE, pct, units } from "@/lib/format";
-import type { Calibration, Evidence, Game, Summary } from "@/lib/types";
+import type { Calibration, Evidence, Game, NoInjury, NoInjuryPeriod, Summary } from "@/lib/types";
 
 const tone = (n: number | null | undefined) =>
   n === null || n === undefined ? "" : n > 0 ? "pos" : n < 0 ? "neg" : "";
@@ -163,6 +163,63 @@ export function FactorCorrections({ c }: { c: Calibration }) {
         before the corrections and {c.rmse_calibrated} after, measured on the same games,
         so the second figure flatters itself.
       </p>
+    </>
+  );
+}
+
+/**
+ * The picks as made beside the same picks with the injury factor at zero.
+ * Weeks before the test started are shown apart: that comparison was chosen
+ * after the results were known, so only the test rows can settle it.
+ */
+export function NoInjuryTest({ n }: { n: NoInjury }) {
+  const rows: [string, NoInjuryPeriod][] = [
+    [`From Week ${n.start_week} (the test)`, n.test],
+    [`Before Week ${n.start_week} (hindsight)`, n.hindsight],
+  ];
+  return (
+    <>
+      <table className="ratings">
+        <thead>
+          <tr>
+            <th>Weeks</th>
+            <th>Picks</th>
+            <th>Sides differ</th>
+            <th>As made</th>
+            <th>Without injuries</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(([label, p]) => (
+            <tr key={label}>
+              <td>{label}</td>
+              <td>{p.games}</td>
+              <td>{p.differ}</td>
+              <td>
+                {p.as_made.record}{" "}
+                <span className={p.as_made.units > 0 ? "pos" : p.as_made.units < 0 ? "neg" : ""}>
+                  {units(p.as_made.units)}
+                </span>
+              </td>
+              <td>
+                {p.no_injury.record}{" "}
+                <span className={p.no_injury.units > 0 ? "pos" : p.no_injury.units < 0 ? "neg" : ""}>
+                  {units(p.no_injury.units)}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {n.upcoming.length > 0 && (
+        <p className="note">
+          Not yet played, without injuries it would take the other side:{" "}
+          {n.upcoming
+            .map((u) => `${u.no_injury} instead of ${u.pick} (Week ${u.week})`)
+            .join("; ")}
+          .
+        </p>
+      )}
     </>
   );
 }

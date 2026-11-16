@@ -173,8 +173,13 @@ class TestRunRespectsTheCap:
         from edgelord.features import build
 
         flagged = [
-            {"game_id": f"2026_05_G{i}", "prediction_id": i, "reasons": ["x"], "pack": {}}
+            {"game_id": f"2026_05_G{i}", "prediction_id": i,
+             "reasons": ["BAL expected QB Lamar Jackson -> Tyler Huntley"], "pack": {}}
             for i in range(3)
+        ] + [
+            {"game_id": "2026_05_INJ", "prediction_id": 9,
+             "reasons": ["BAL WR Zay Flowers: Limited Participation in Practice -> Out"],
+             "pack": {}},
         ]
         made = []
 
@@ -211,3 +216,40 @@ class TestRunRespectsTheCap:
     def test_flag_only_without_run(self, calls):
         self._run(run=False, cap=5.0)
         assert calls == []
+
+    def test_injury_only_flag_is_not_rerun(self, calls):
+        self._run(cap=5.0)
+        assert calls == ["2026_05_G0", "2026_05_G1", "2026_05_G2"]
+
+
+class TestWorthRerun:
+    """Since 2026-11-15 an injury flag on its own is listed, never rerun."""
+
+    def test_expected_quarterback_change(self):
+        assert recheck.worth_rerun(["SEA expected QB Sam Darnold -> Drew Lock"])
+
+    def test_starting_quarterback_status(self):
+        assert recheck.worth_rerun(["CLE QB Deshaun Watson: Did Not Participate In Practice -> Questionable"])
+
+    def test_key_number_line_move(self):
+        assert recheck.worth_rerun(["spread +3 -> +2.5 (home), crossed a key number"])
+
+    def test_no_pick_yet(self):
+        assert recheck.worth_rerun(["no pick yet"])
+
+    def test_injuries_alone(self):
+        assert not recheck.worth_rerun([
+            "GB LB Micah Parsons: Limited Participation in Practice -> Out",
+            "GB RB Josh Jacobs: Did Not Participate In Practice -> Out",
+        ])
+
+    def test_player_named_like_a_position_is_not_a_quarterback(self):
+        assert not recheck.worth_rerun(["NYJ WR Q.B. Smith: not listed -> Out"])
+
+    def test_detector_output_round_trips(self):
+        old = _pack(away_qb="Lamar Jackson")
+        new = _pack(away_qb="Tyler Huntley")
+        assert recheck.worth_rerun(recheck.injury_changes(old, new))
+        old = _pack(away_inj=[_inj("Zay Flowers", "Limited Participation in Practice")])
+        new = _pack(away_inj=[_inj("Zay Flowers", "Out")])
+        assert not recheck.worth_rerun(recheck.injury_changes(old, new))

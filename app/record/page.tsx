@@ -4,6 +4,7 @@ import {
   EdgeRecord,
   EvidenceBadge,
   FactorCorrections,
+  NoInjuryTest,
   RecordRow,
   SpreadRecord,
   SummaryTable,
@@ -86,6 +87,19 @@ export default async function RecordPage() {
             close to ×1 until there are enough games to back them.
           </p>
           <FactorCorrections c={payload.calibration} />
+        </>
+      )}
+
+      {payload.no_injury && payload.no_injury.hindsight.games > 0 && (
+        <>
+          <h3 className="section">Without the injury factor</h3>
+          <p className="note">
+            Injury news has tipped some close picks the wrong way. Each graded pick is
+            replayed here with the injury factor set to zero, on the same line. No pick
+            changes because of this table. If the right-hand column keeps winning in
+            the test row, the injury factor comes out.
+          </p>
+          <NoInjuryTest n={payload.no_injury} />
         </>
       )}
 
