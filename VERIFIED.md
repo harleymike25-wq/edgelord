@@ -7,7 +7,7 @@ and only one of those is worth anything at 11am on a Sunday.
 
 Keep it honest. Move a row up only after the thing has actually executed.
 
-Last updated: 2026-10-01
+Last updated: 2026-11-16
 
 ---
 
@@ -865,3 +865,42 @@ comes out. Tests: `test_no_injury.py` (7), `TestWorthRerun` (7) plus the
 `--run` skip; full suite 358 passing. `tsc --noEmit` clean, panel checked in
 the browser at desktop and 375px, 0 console errors. Undo: drop the `worth`
 filter in `cmd_recheck`.
+
+## Audit fixes and computed lessons (2026-11-16)
+
+A read of the whole bot against the database. Season at the time: 78-66-4,
++4.91 units; best bets 5-6; blind picks 30-25 (favourites 19-10, underdogs
+11-15); 119 of 148 picks with a CLV of exactly 0. No model calls, $0.
+
+| What | Evidence |
+|---|---|
+| **Backtests were still in the verdict** | `evidence.assess` filtered on `superseded_by` and `best_bet` but not on `run_label`, the same gap fixed in `track.record` on 2026-09-17. Three graded backtest best bets were being counted. Now excluded; run on the real database the verdict reads 11 decided plays, 5-6, matching the record. Two tests. |
+| **Recheck reruns use the blind predictor** | `recheck --run` called the old line-anchored `predict_one`, so a scheduled rerun would have swapped predictors mid-week (noted 2026-10-21, never fixed). It now goes through `cli.blind_one`, shared with `shadow --official`; the spend is still labelled `recheck` for the weekly cap and the pick is stored as `blind`. The cap tests now fail if the old predictor is called. **Stubbed model only: no live rerun has been made through this path.** |
+| **Snapshot times compared as instants** | Snapshots are stamped UTC with an offset, picks local with none, and `market._consensus_at` compared them as strings. `--only-moved` therefore read "the line when we picked" several hours early. Both are now parsed to UTC. Two tests. Only `--only-moved` used this; `recheck` compares packs and was unaffected. |
+| **Quarterback baseline: smaller than the audit said** | The audit claimed the QB-adjusted Elo assumes last week's starter for an upcoming game. Wrong for the coming week: nflverse already names a projected starter there (13 of 13 Week 11 games). `qb.replay` now also accepts the pack's expected starter, used only when the schedule names nobody, so on today's data it changes no baseline. The first version of the fix did nothing at all (a local variable shadowed the argument); the unit test caught it. Three tests. |
+| **The two quarterback sources disagree** | Found while checking the above, not fixed. For BAL in Week 11 the schedule projects one starter and the pack's `expected_starter` (depth chart plus injury status) another. On the 16 flagged team-sides in graded blind picks, the pack's expected starter was not who started 3 times: CLE Week 9, ARI Week 10, and SEA Week 10, where the pack said Lock, Darnold started, and the pick flipped to LV and lost. Which source is better before kickoff is not measured. |
+| **Computed lessons** | `edgelord lessons` (`edgelord/lessons.py`), free. Tags each graded blind spread pick, wins and losses, from its stored factor points: injuries overriding team strength, a quarterback read on under 200 dropbacks, a pick against team strength, matchups overriding team strength. Also every factor's record when leaned on and when gone against, and from the play-by-play whether the picked side was out-played. The untracked over/under lean on each card is not counted. 24 tests. |
+
+Pre-registered, before any Week 11 game: Weeks 7-10 are hindsight, because the
+tags were written from them. From Week 11 a tag reads `act` at 20+ decided picks
+losing at one-sided p < 0.10 against a coin flip. `act` is a reason to change
+the arithmetic that sums the factors, in code and in the open; nothing here
+changes a pick, and no prose reaches a prompt. Four tags are watched, so one
+`act` a season is about what chance produces: check hindsight agrees first.
+
+Hindsight, 55 picks, not judged: injuries over strength 5-8, picks against team
+strength 10-10, thin quarterback read 2-1. Leaned on team strength 19-12, on
+home field 8-15, on injuries 10-12. Of 25 losses the picked side was out-played
+in 12, even in 8 and won the snaps in 5; of 30 wins it won the snaps in 19 and
+was out-played in 4.
+
+Also measured, not acted on: rerunning a game moved the blind margin by 1.7
+points (SD over 37 rerun pairs, news and model noise together) and flipped 8
+sides, against a mean edge of 2.05; first picks went 28-26-1, final 30-25. The
+team_strength correction's ×0.90 → ×1.16 swing is inside roughly ±0.2 of
+uncertainty at 55 games. Blind totals, never bet: 27-25-3, RMSE 13.91 against
+the line's 13.40. `shadow_predictions` is empty: the 2026-10-21 shadow test
+never ran beside the live predictor. Scheduled tasks are still not registered.
+The roofed-stadium weather gap (2026-11-15) is still open.
+
+Full suite 389 passing. `tsc --noEmit` clean.

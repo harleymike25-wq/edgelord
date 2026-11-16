@@ -183,7 +183,8 @@ class TestRunRespectsTheCap:
         ]
         made = []
 
-        def fake_predict(conn, builder, game_id, **kw):
+        def fake_predict(conn, builder, game_id, base, calib, **kw):
+            assert kw["usage_label"] == "recheck"   # counts against the weekly cap
             made.append(game_id)
             _usage(conn, game_id, "recheck", 0.12)
             return {"_cost_usd": 0.12}
@@ -193,7 +194,12 @@ class TestRunRespectsTheCap:
         monkeypatch.setattr(recheck, "detect", lambda *a, **k: flagged)
         monkeypatch.setattr(recheck, "store_flags", lambda *a, **k: None)
         monkeypatch.setattr(recheck, "call_estimate", lambda conn: 0.12)
-        monkeypatch.setattr(cli, "predict_one", fake_predict)
+        # Reruns must go through the blind predictor, never the old one.
+        monkeypatch.setattr(cli, "blind_one", fake_predict)
+        monkeypatch.setattr(cli, "blind_context", lambda conn, season, packs: ({}, {}))
+        monkeypatch.setattr(
+            cli, "predict_one",
+            lambda *a, **k: pytest.fail("recheck used the line-anchored predictor"))
         return made
 
     def _run(self, **kw):

@@ -214,6 +214,8 @@ def quarterback_situation(pbp: pl.DataFrame, injuries: pl.DataFrame,
     return {
         "listed_starter": listed["name"],
         "expected_starter": expected["name"],
+        # For the computed quarterback baseline; removed from what the model sees.
+        "expected_starter_id": expected["gsis_id"],
         "basis": basis,
         "candidates": candidates,
     }

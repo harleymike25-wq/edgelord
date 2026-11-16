@@ -15,7 +15,7 @@ the model is not told something stronger than the data supports.
 from __future__ import annotations
 
 import statistics
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Ordered by how much probability mass sits on them.
 KEY_NUMBERS = [3, 7, 6, 10, 4, 14]
@@ -174,27 +174,39 @@ def best_available(conn, game_id: str) -> dict:
     }
 
 
+def _instant(stamp: str) -> datetime:
+    """A stored timestamp as a UTC instant.
+
+    Snapshots are stamped in UTC with an offset; predictions are stamped in
+    local time with none. Compared as strings, a pick made at 10:58 local read
+    as earlier than a snapshot taken at 15:51 UTC the same morning, so the
+    "line when we picked" was whatever it had been hours before the pick.
+    """
+    dt = datetime.fromisoformat(stamp)
+    return dt.astimezone(timezone.utc)   # naive means local, as written
+
+
 def _consensus_at(conn, game_id: str, at: str | None) -> float | None:
     """Consensus home spread at a point in time, or the latest if `at` is None."""
-    if at is None:
-        row = conn.execute(
-            "SELECT MAX(captured_at) t FROM line_snapshots WHERE game_id = ?",
+    stamps = [
+        r["captured_at"]
+        for r in conn.execute(
+            "SELECT DISTINCT captured_at FROM line_snapshots WHERE game_id = ?",
             (game_id,),
-        ).fetchone()
-    else:
-        row = conn.execute(
-            "SELECT MAX(captured_at) t FROM line_snapshots "
-            "WHERE game_id = ? AND captured_at <= ?",
-            (game_id, at),
-        ).fetchone()
-    if not row or not row["t"]:
+        ).fetchall()
+    ]
+    if at is not None:
+        cutoff = _instant(at)
+        stamps = [s for s in stamps if _instant(s) <= cutoff]
+    if not stamps:
         return None
+    latest = max(stamps, key=_instant)
     rows = [
         dict(r)
         for r in conn.execute(
             "SELECT spread_home FROM line_snapshots "
             "WHERE game_id = ? AND captured_at = ?",
-            (game_id, row["t"]),
+            (game_id, latest),
         ).fetchall()
     ]
     return _consensus(rows, "spread_home")

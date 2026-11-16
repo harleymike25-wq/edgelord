@@ -140,6 +140,9 @@ def assess(conn, *, season: int | None = None) -> dict:
         "FROM results r JOIN predictions p ON p.id = r.prediction_id "
         "JOIN games g ON g.game_id = r.game_id "
         "WHERE p.superseded_by IS NULL AND p.pick_type != 'pass' "
+        # Backtests are graded so a replay can be scored, but they never risked
+        # anything: the same exclusion as `track.record`.
+        "AND p.run_label != 'backtest' "
         "AND p.conviction = 'best_bet'"
     )
     params: tuple = ()

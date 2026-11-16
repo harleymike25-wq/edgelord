@@ -217,6 +217,17 @@ from what the model said, never from their own output.
 & $py -m edgelord.cli calibrate                     # the corrections as they stand, free
 ```
 
+The post-mortems' recurring findings feed back the same way, as counts rather
+than prose. `edgelord/lessons.py` tags every graded pick, wins and losses, with
+the habits the reviews keep naming (injuries overriding team strength, a
+quarterback judged on a small sample) and reports each habit's record. A habit
+is acted on, in the arithmetic, only after 20 picks made since the tag was
+written lose at p < 0.10.
+
+```powershell
+& $py -m edgelord.cli lessons                       # the habits and their records, free
+```
+
 The corrections are on the dashboard's record page.
 
 ## Sign conventions

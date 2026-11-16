@@ -219,6 +219,65 @@ def predict_one(conn, builder, game_id: str, *, effort=None, label="manual",
     return result
 
 
+def blind_context(conn, season: int, packs) -> tuple[dict, dict]:
+    """The computed baseline and the factor corrections a blind pick needs.
+
+    The baseline is told who is expected to start each game, from the packs
+    themselves, so a quarterback ruled out this week moves it this week.
+    """
+    from . import calibration, shadow
+
+    base = shadow.baselines(season, starters=shadow.expected_starters(packs))
+    # Learned from every graded blind pick so far; unplayed games have no
+    # score, so nothing about the games being predicted can leak in.
+    return base, calibration.current(conn)
+
+
+def blind_one(conn, builder, game_id: str, base: dict, calib: dict, *,
+              pack: dict | None = None, effort=None, usage_label: str = "blind",
+              verbose: bool = False) -> dict | None:
+    """Build, predict blind, store as the official pick and print. None on failure.
+
+    `usage_label` is what the spend ledger records (a scheduled recheck counts
+    against its own weekly cap). The pick itself is always stored as `blind`,
+    which is what the corrections and the record read.
+    BudgetExceeded propagates so a caller can stop the whole run.
+    """
+    from . import predict as predictor
+    from . import shadow
+
+    pack = pack or builder.build(conn, game_id)
+    features_id = builder.store(conn, game_id, pack)
+    try:
+        out = shadow.predict(pack, conn, base.get(game_id), effort=effort,
+                             run_label=usage_label)
+    except predictor.BudgetExceeded:
+        raise
+    except Exception as e:  # noqa: BLE001
+        print(f"{game_id}: FAILED {e}", file=sys.stderr)
+        return None
+    calc = shadow.assemble(pack, out, base.get(game_id), calib)
+    result = shadow.to_prediction(pack, out, calc)
+    pid = predictor.store(conn, game_id, features_id, pack, result,
+                          run_label="blind", conviction=calc["tier"])
+    # A fresh pick answers whatever flagged the old one.
+    conn.execute("DELETE FROM recheck_flags WHERE game_id = ?", (game_id,))
+    conn.commit()
+    _print_blind(game_id, calc, f"#{pid}")
+    if verbose:
+        print(f"  {out['headline']}\n  {out['paragraph']}\n")
+    return out
+
+
+def _print_blind(game_id: str, calc: dict, ref: str) -> None:
+    print(
+        f"{game_id:<20} {calc['winner'] or 'tie':<4} by {abs(calc['projected_margin']):>4.1f} "
+        f"({calc['home_win_prob']:.0%} home)  elo {calc['baseline_margin']:+.1f}  "
+        f"line {calc['line_home']}  -> {calc['pick_side']} {calc['tier']} "
+        f"edge {calc['edge']}  [{ref}]"
+    )
+
+
 def cmd_recheck(args) -> int:
     from . import predict as predictor
     from . import recheck
@@ -253,14 +312,19 @@ def cmd_recheck(args) -> int:
         if args.allow is not None:
             cap = spent + args.allow
         print(f"\nweek {args.week} recheck spend ${spent:.2f} of ${cap:.2f} cap, ~${est:.2f}/call")
+        # Reruns go through the blind predictor, the one that makes the
+        # official picks. Until 2026-11-16 this called the old line-anchored
+        # predictor, so a rerun would have swapped predictors mid-week.
+        context = None
         for f in worth:
             if spent + est > cap:
                 print(f"{f['game_id']}: left flagged, cap reached")
                 continue
+            if context is None:
+                context = blind_context(conn, season, [w["pack"] for w in worth])
             try:
-                result = predict_one(
-                    conn, builder, f["game_id"], label="recheck", pack=f["pack"]
-                )
+                blind_one(conn, builder, f["game_id"], *context,
+                          pack=f["pack"], usage_label="recheck")
             except predictor.BudgetExceeded as e:
                 print(f"stopping: {e}", file=sys.stderr)
                 break
@@ -484,8 +548,8 @@ def cmd_postmortem(args) -> int:
 
 
 def cmd_shadow(args) -> int:
-    """The blind predictor, beside the live one. Writes only to shadow_predictions."""
-    from . import calibration, shadow
+    """The blind predictor. `--official` stores the pick of record; otherwise a shadow."""
+    from . import shadow
     from . import predict as predictor
     from .features.build import FeatureBuilder, slate_game_ids, split_played
 
@@ -501,53 +565,48 @@ def cmd_shadow(args) -> int:
             print("nothing to do")
             return 0
 
-        base = shadow.baselines(season)
-        # Learned from every graded blind pick so far; unplayed games have no
-        # score, so nothing about the games being predicted can leak in.
-        calib = calibration.current(conn)
+        builder = FeatureBuilder(sorted({season - 1, season}))
+        packs = {g: builder.build(conn, g) for g in game_ids}
+        base, calib = blind_context(conn, season, packs.values())
         print(f"factor corrections from {calib['n_games']} graded games: "
               + ", ".join(f"{k} x{m:g}" for k, m in calib["multipliers"].items() if m != 1.0)
               if calib["n_games"] else "factor corrections: none yet")
-        builder = FeatureBuilder(sorted({season - 1, season}))
         spent = 0.0
         for game_id in game_ids:
-            pack = builder.build(conn, game_id)
+            pack = packs[game_id]
             if args.dry_run:
                 prompt = shadow.build_prompt(pack, base.get(game_id))
                 print(f"===== {game_id} ({len(prompt):,} chars) =====")
                 print(prompt if args.verbose else prompt[:4000] + "\n...")
                 continue
-            features_id = builder.store(conn, game_id, pack)
-            label = "blind" if args.official else "shadow"
             try:
-                out = shadow.predict(pack, conn, base.get(game_id), effort=args.effort,
-                                     run_label=label)
+                if args.official:
+                    # The official pick for this game: same table, record and
+                    # site as the live predictor, with the blind predictor's tier.
+                    out = blind_one(conn, builder, game_id, base, calib, pack=pack,
+                                    effort=args.effort, verbose=args.verbose)
+                    if out is None:
+                        continue
+                else:
+                    features_id = builder.store(conn, game_id, pack)
+                    try:
+                        out = shadow.predict(pack, conn, base.get(game_id),
+                                             effort=args.effort, run_label="shadow")
+                    except predictor.BudgetExceeded:
+                        raise
+                    except Exception as e:  # noqa: BLE001
+                        print(f"{game_id}: FAILED {e}", file=sys.stderr)
+                        continue
+                    calc = shadow.assemble(pack, out, base.get(game_id), calib)
+                    sid = shadow.store(conn, game_id, features_id, out, calc)
+                    conn.commit()
+                    _print_blind(game_id, calc, f"s#{sid}")
+                    if args.verbose:
+                        print(f"  {out['headline']}\n  {out['paragraph']}\n")
             except predictor.BudgetExceeded as e:
                 print(f"stopping: {e}", file=sys.stderr)
                 break
-            except Exception as e:  # noqa: BLE001
-                print(f"{game_id}: FAILED {e}", file=sys.stderr)
-                continue
-            calc = shadow.assemble(pack, out, base.get(game_id), calib)
-            if args.official:
-                # The official pick for this game: same table, record and site as
-                # the live predictor, with the blind predictor's own tier.
-                result = shadow.to_prediction(pack, out, calc)
-                sid = predictor.store(conn, game_id, features_id, pack, result,
-                                      run_label=label, conviction=calc["tier"])
-                conn.execute("DELETE FROM recheck_flags WHERE game_id = ?", (game_id,))
-            else:
-                sid = shadow.store(conn, game_id, features_id, out, calc)
-            conn.commit()
             spent += out.get("_cost_usd") or 0.0
-            print(
-                f"{game_id:<20} {calc['winner'] or 'tie':<4} by {abs(calc['projected_margin']):>4.1f} "
-                f"({calc['home_win_prob']:.0%} home)  elo {calc['baseline_margin']:+.1f}  "
-                f"line {calc['line_home']}  -> {calc['pick_side']} {calc['tier']} "
-                f"edge {calc['edge']}  [s#{sid}]"
-            )
-            if args.verbose:
-                print(f"  {out['headline']}\n  {out['paragraph']}\n")
         if not args.dry_run:
             print(f"\nthis run ${spent:.3f} · month to date ${predictor.month_spend(conn):.2f}")
     return 0
@@ -570,6 +629,64 @@ def cmd_calibrate(args) -> int:
     for k, f in c["factors"].items():
         print(f"{k:<15} {f['games']:>5} {f['avg_points']:>8.2f} {'x' + format(f['multiplier'], 'g'):>11}")
     print(f"\nmargin error (in-sample)  raw {c['rmse_raw']}  corrected {c['rmse_calibrated']}")
+    return 0
+
+
+def cmd_lessons(args) -> int:
+    """The model's habits, counted on every graded blind pick. Free."""
+    from . import lessons
+    from .sources import nflverse
+
+    db.init()
+    season = args.season or config.current_season()
+    try:
+        pbp = nflverse.pbp([season])
+    except Exception:  # noqa: BLE001 -- the tags do not need it
+        pbp = None
+    with db.session() as conn:
+        out = lessons.tally(conn, season, pbp=pbp)
+
+    def line(name, b):
+        pct = "--" if b["win_pct"] is None else f"{b['win_pct']:.0%}"
+        note = b["verdict"]
+        if note == "too few":
+            note = f"too few, {b['needs']} more"
+        elif "p_value" in b and note != "hindsight":
+            note += f" (p {b['p_value']})"
+        print(f"  {name:<26} {b['record']:<8} {pct:>4}  {note}")
+
+    for key, title in (("test", f"WEEK {out['start_week']} ON (the test)"),
+                       ("hindsight", f"BEFORE WEEK {out['start_week']} (hindsight, not judged)")):
+        p = out[key]
+        print(f"\n{title}: {p['picks']} graded picks")
+        print(" habits")
+        for t, b in p["tags"].items():
+            line(t, b)
+        print(" picks that leaned on a factor (1+ points toward the pick)")
+        for k, f in p["factors"].items():
+            if f["leaned_on"]["wins"] + f["leaned_on"]["losses"]:
+                line(k, f["leaned_on"])
+        print(" picks that went against a factor (1+ points the other way)")
+        for k, f in p["factors"].items():
+            if f["went_against"]["wins"] + f["went_against"]["losses"]:
+                line(k, f["went_against"])
+        hp = p["how_played"]
+        print(" how the game was played, from the play-by-play")
+        for res, label in (("loss", "losses"), ("win", "wins")):
+            h = hp[res]
+            print(f"  {label:<8} out-played {h['outplayed']}, even {h['even']}, "
+                  f"won the snaps {h['won_snaps']}"
+                  + (f", unknown {h['unknown']}" if h["unknown"] else ""))
+
+    print(f"\nA habit reads 'act' at {out['min_picks']}+ test picks losing at "
+          f"p < {out['p_bar']}. Nothing here changes a pick.")
+    if args.verbose:
+        print()
+        for t in out["tag_meaning"].items():
+            print(f"  {t[0]}: {t[1]}")
+        for g in out["tagged_picks"]:
+            print(f"  W{g['week']:<2} {g['game_id']:<18} {g['pick']:<4} {g['result']:<5} "
+                  f"{g['how_played'] or '':<10} {', '.join(g['tags'])}")
     return 0
 
 
@@ -799,6 +916,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="reconstruct factor points for blind picks made before they were stored",
     )
     s.set_defaults(func=cmd_calibrate)
+
+    s = sub.add_parser(
+        "lessons",
+        help="the model's habits counted on every graded pick, wins and losses (no cost)",
+    )
+    s.add_argument("--season", type=int)
+    s.add_argument("--verbose", action="store_true", help="list each tagged pick")
+    s.set_defaults(func=cmd_lessons)
 
     s = sub.add_parser("report", help="render the slate report")
     s.add_argument("--week", type=int, required=True)

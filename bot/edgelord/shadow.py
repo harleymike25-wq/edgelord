@@ -344,14 +344,35 @@ def build_prompt(pack: dict, baseline: dict | None) -> str:
 
 # --- the computed baseline ---------------------------------------------------
 
-def baselines(season: int, *, games=None, qbg=None) -> dict[str, dict]:
-    """QB-adjusted Elo for every game of `season`, as of before each kickoff."""
+def expected_starters(packs) -> dict[str, dict[str, str]]:
+    """{game_id: {side: passer_id}} for every pack that names an expected starter.
+
+    Only packs with a `quarterback_situation` carry one: the listed starter is
+    hurt, uncertain, or did not start last time. Everyone else is last week's
+    starter, which the baseline already assumes.
+    """
+    out: dict[str, dict[str, str]] = {}
+    for pack in packs:
+        game_id = (pack.get("game") or {}).get("game_id")
+        for side in ("home", "away"):
+            sit = (pack.get(side) or {}).get("quarterback_situation") or {}
+            if game_id and sit.get("expected_starter_id"):
+                out.setdefault(game_id, {})[side] = sit["expected_starter_id"]
+    return out
+
+
+def baselines(season: int, *, games=None, qbg=None, starters=None) -> dict[str, dict]:
+    """QB-adjusted Elo for every game of `season`, as of before each kickoff.
+
+    `starters` (see `expected_starters`) names who is expected to start the
+    games not yet played.
+    """
     from .models import common, elo, qb
 
     games = games if games is not None else common.load_games(season)
     qbg = qbg if qbg is not None else qb.qb_games(season)
     ep, qp = elo.DEFAULT, qb.DEFAULT
-    rep = qb.replay(games, qbg, qp, ep).filter(pl.col("season") == season)
+    rep = qb.replay(games, qbg, qp, ep, starters=starters).filter(pl.col("season") == season)
     out = {}
     neutral = dict(zip(games["game_id"].to_list(), games["neutral"].to_list()))
     for r in rep.iter_rows(named=True):

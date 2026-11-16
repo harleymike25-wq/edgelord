@@ -508,6 +508,11 @@ def model_view(pack: dict) -> dict:
         block.pop("prior_season_record", None)
         if reg:
             block["season_record"] = {k: reg[k] for k in SEASON_RECORD_FIELDS if k in reg}
+        sit = block.get("quarterback_situation")
+        if isinstance(sit, dict) and "expected_starter_id" in sit:
+            block["quarterback_situation"] = {
+                k: v for k, v in sit.items() if k != "expected_starter_id"
+            }
         view[side] = block
     return view
 

@@ -105,8 +105,16 @@ class _State:
 
 
 def replay(games: pl.DataFrame, qbg: pl.DataFrame, p: Params = DEFAULT,
-           ep: elo.Params = elo.DEFAULT) -> pl.DataFrame:
-    """Elo's replay with each game's quarterback adjustment beside it."""
+           ep: elo.Params = elo.DEFAULT, *,
+           starters: dict[str, dict[str, str]] | None = None) -> pl.DataFrame:
+    """Elo's replay with each game's quarterback adjustment beside it.
+
+    `starters` is {game_id: {"home": passer_id, "away": passer_id}} for games
+    the schedule has no starter for yet. Without it an upcoming game assumes
+    last week's starter, so the adjustment read zero in exactly the week a
+    starter was ruled out.
+    """
+    expected = starters or {}
     by_game: dict[str, list[tuple]] = {}
     for gid, qb, db, e in qbg.iter_rows():
         by_game.setdefault(gid, []).append((qb, db, e))
@@ -118,7 +126,9 @@ def replay(games: pl.DataFrame, qbg: pl.DataFrame, p: Params = DEFAULT,
         adjs, starters = {}, {}
         for side in ("home", "away"):
             team = g[f"{side}_team"]
-            qb = g[f"{side}_qb_id"] or st.last_starter.get(team)
+            qb = (g[f"{side}_qb_id"]
+                  or (expected.get(g["game_id"]) or {}).get(side)
+                  or st.last_starter.get(team))
             v = st.value(qb)
             adjs[side] = v - st.team_value.get(team, v)
             starters[team] = qb
