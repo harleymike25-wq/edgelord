@@ -1006,3 +1006,19 @@ own. The point is that from Week 11 one row, blind-v7, grows alone.
 
 10 tests; full suite 437 passing. No live pick has been stamped yet. `by_version`
 reaches the synced record but is not shown on the dashboard.
+
+**Week 10 graded, fully (2026-11-19).** `refresh` took 2026 to 150 final
+scores; both open games lost (PIT -3.5 at CIN, BAL +4.5 vs LAC). Week 10
+**8-6**; season **78-68-4, +2.91 units, ROI +0.020**. Their post-mortems are
+not run.
+
+**Week 11 picked, the first live blind-v7 slate (2026-11-19).** All 13 official
+blind picks stored, $1.64 (month to date $9.24), corrections from 57 graded
+games (team_strength ×1.155, home_field ×0.945). Every pick is stamped
+`blind-v7+ecbf3794c5 claude-opus-5-5 medium` and carries a `timing` call; no
+`slot` (the early/gameday work is uncommitted and not wired in). Best bets BUF
+-16.5 (BUF by 20.9) and DEN -10 (DEN by 15.3). **First live total pick:** TEN/DAL
+under 55.5, projected 47, edge 8.5, over the 7-point bar. First live BET EARLY:
+MIN +3.5 (SF by 0.8). Leans IND +12.5, ARI +16.5, NYJ +3, PIT -4.5, CIN -6.
+Coin flips CAR -3, CHI -11.5, DET -6, JAX -6. Report rendered, synced to
+Firestore. The timing tag has not been looked at in a browser.
