@@ -1022,3 +1022,17 @@ under 55.5, projected 47, edge 8.5, over the 7-point bar. First live BET EARLY:
 MIN +3.5 (SF by 0.8). Leans IND +12.5, ARI +16.5, NYJ +3, PIT -4.5, CIN -6.
 Coin flips CAR -3, CHI -11.5, DET -6, JAX -6. Report rendered, synced to
 Firestore. The timing tag has not been looked at in a browser.
+
+**Week 11 gameday recheck (2026-11-22).** `refresh` + `recheck --week 11`
+flagged 11 games, with 2 worth a rerun because the line crossed a key number.
+Owner approved $0.30. The default weekly recheck cap is $0, so the first `--run`
+spent nothing; I reran with `--allow 0.30` and spent **$0.26** (month to date
+$9.50). New picks: **PIT +3.5, best bet** (#611, PIT by 9.5, edge 6.0; PHI down
+to its third QB), replacing the stored PIT/PHI lean at 4.5. **DET -3.5, lean**
+(#610, DET by 6.4, edge 2.9), replacing the DET -6 coin flip. Both are stamped
+`blind-v7+ecbf3794c5`, with timing `not_rated` (inside 7h of kickoff). ARI@KC
+stays flagged because the QB is unconfirmed (Carson Beck Questionable,
+different starter on the schedule). Eight injury-only flags were not rerun, per
+the 2026-11-15 rule. The reruns used the uncommitted `store()` (slot/model_reply
+columns) with no slot, so the old supersede path applies. Report re-rendered,
+synced.
