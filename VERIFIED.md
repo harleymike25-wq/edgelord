@@ -1036,3 +1036,22 @@ different starter on the schedule). Eight injury-only flags were not rerun, per
 the 2026-11-15 rule. The reruns used the uncommitted `store()` (slot/model_reply
 columns) with no slot, so the old supersede path applies. Report re-rendered,
 synced.
+
+**Week 11 graded (2026-11-25).** `refresh` took 2026 to 163 final scores;
+`grade` scored 15 rows (13 live, 2 superseded). Week 11 **4-9, -5.36 units**
+(spread 4-8, total 0-1); season **82-77-4, -2.45 units, ROI -0.015**, now under
+break-even. By tier: best bets 2-1 (BUF, DEN won; PIT lost), leans 2-5 (DET,
+NYJ won), coin flips 0-3. Correction to the recheck entry above: the rerun pick
+was **PIT -3.5**, not +3.5 (`line_at_pick` 3.5 is stored as the negated
+pick-side spread); PHI won by 3, so it lost. Neither rerun changed a result:
+PIT -4.5 and DET -6 grade the same. CLV was flat (avg ~0; DEN +1.5, ARI +1.0,
+MIN -1.0, CAR -0.5), so the market did not move against the picks.
+
+Miss arithmetic for all 9 losses stored (`postmortem --week 11 --no-model`,
+$0): 1 photo finish (CAR), 1 clear (CHI), PIT clear, 5 decisive, 2 blowouts
+(MIN +3.5 lost by 25, TEN/DAL under 55.5 went 81). Road favourites went 0-3,
+all losing outright (CIN -6, JAX -6, PIT -3.5), after 9-1 in Weeks 8-10; they
+are still 20-14 on the season. Team strength (×1.155 correction) was the
+heaviest wrong factor in 4 of the 9. 4-9 or worse happens about 13% of weeks
+for a coin flipper. Coin flips are 18-21, -4.64 units on the season. Narratives
+not run.
