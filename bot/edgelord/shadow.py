@@ -258,6 +258,18 @@ factors with the evidence for each. Review every factor, in order, and score \
 it. Your projected margin is the SUM of your factor points -- it is added up \
 for you -- so the number and the reasoning cannot drift apart.
 
+START WITH WHERE EACH TEAM IS RIGHT NOW. Before you score anything, write \
+`situation` for each team: one or two sentences on its current state -- who is \
+playing quarterback and how long he has been in this offence, who is missing, \
+how it has played lately and against whom. Then score the factors with both \
+situations in view: a quarterback new to the system, or a team that has only \
+beaten weak opponents, facing a clearly better team is a real cost, not a \
+footnote.
+
+AFTER THE FACTORS, WRITE `hypothetical`: two or three sentences on how this \
+game plays out -- the game script your factor points imply, ending with a \
+rough final score that matches your margin and total.
+
 HOW TO SCORE A FACTOR:
 - `favors`: the team it helps, or "neither".
 - `points`: what it is worth on the final margin, toward that team, in points \
@@ -302,17 +314,18 @@ ALSO RETURN:
 defences, pace and weather.
 - `headline`: one line, under 15 words: who wins and the reason, with no \
 statistics or analytics terms.
-- `paragraph`: three short paragraphs separated by blank lines. (1) Who wins \
-and why, in a sentence or two. (2) The matchup or player that decides it. \
-(3) What could flip it. Readers see this; the computed baseline means nothing \
+- `paragraph`: two short paragraphs separated by a blank line. (1) The \
+matchup or player that decides it. (2) What could flip it. Readers see this, \
+after both situations and the hypothetical; the computed baseline means nothing \
 to them, so do not mention it here -- that goes in `baseline_disagreement`.
 
-WRITE THE HEADLINE AND PARAGRAPH FOR A FOOTBALL FAN, NOT AN ANALYST: players \
+WRITE THE SITUATIONS, HYPOTHETICAL, HEADLINE AND PARAGRAPH FOR A FOOTBALL FAN, NOT AN ANALYST: players \
 by name, the matchup that decides it, what the injury means on the field. \
 Translate numbers into football -- not "-0.12 EPA per dropback" but "he has \
 been holding the ball and taking sacks for a month". No EPA, success rate, \
-CPOE, dropbacks or continuity in either, and at most one plain number per \
-paragraph. Be confident and vivid, with some bite. The figures belong in each \
+CPOE, dropbacks or continuity in any of them, and at most one plain number \
+per paragraph, situation or hypothetical (the hypothetical's final score \
+aside). Be confident and vivid, with some bite. The figures belong in each \
 factor's `reading`, which is not shown to readers.
 - `baseline_disagreement`: one sentence on the biggest reason your number \
 differs from the computed baseline, or "agree".
@@ -330,22 +343,36 @@ _FACTOR_SCHEMA = {
     "additionalProperties": False,
 }
 
+_SITUATION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "away": {"type": "string", "description": "The away team right now, in one or two sentences."},
+        "home": {"type": "string", "description": "The home team right now, in one or two sentences."},
+    },
+    "required": ["away", "home"],
+    "additionalProperties": False,
+}
+
+# Order matters: the situations are written before the factors are scored, and
+# the hypothetical after them, so it can follow the points.
 RESPONSE_SCHEMA = {
     "type": "object",
     "properties": {
+        "situation": _SITUATION_SCHEMA,
         "factors": {
             "type": "object",
             "properties": {k: _FACTOR_SCHEMA for k in FACTOR_KEYS},
             "required": list(FACTOR_KEYS),
             "additionalProperties": False,
         },
+        "hypothetical": {"type": "string"},
         "projected_total": {"type": "number"},
         "headline": {"type": "string"},
         "paragraph": {"type": "string"},
         "baseline_disagreement": {"type": "string"},
     },
-    "required": ["factors", "projected_total", "headline", "paragraph",
-                 "baseline_disagreement"],
+    "required": ["situation", "factors", "hypothetical", "projected_total",
+                 "headline", "paragraph", "baseline_disagreement"],
     "additionalProperties": False,
 }
 
@@ -584,6 +611,16 @@ def to_prediction(pack: dict, out: dict, calc: dict) -> dict:
         if winner and pick != winner:
             headline += f", but closer than the market thinks: {pick} {shown}"
 
+    # Each team's situation, then how the game plays out, ahead of the model's
+    # matchup and what-could-flip-it paragraphs. Replies stored before
+    # 2026-11-25 have neither, and replay without them.
+    situation = out.get("situation") or {}
+    story = [f"{team} right now: {situation[key].strip()}"
+             for team, key in ((away, "away"), (home, "home")) if situation.get(key)]
+    if out.get("hypothetical"):
+        story.append(f"How it plays out: {out['hypothetical'].strip()}")
+    body = "\n\n".join([*story, out["paragraph"]])
+
     return {
         "pick_type": official["type"],
         "pick_side": official["side"],
@@ -592,7 +629,7 @@ def to_prediction(pack: dict, out: dict, calc: dict) -> dict:
         "projected_margin": margin,
         "projected_total": out["projected_total"],
         "headline": headline,
-        "paragraph": f"{lead}\n\n{out['paragraph']}",
+        "paragraph": f"{lead}\n\n{body}",
         "key_factors": key_factors,
         "decision_table": rows,
         "conviction": official["tier"],

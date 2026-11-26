@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import html
 import json
+import re
 from datetime import datetime
 
 from . import config, factor_tables, postmortem, track
@@ -393,7 +394,8 @@ def render_html(conn, season: int, week: int) -> str:
             f"<span class='conf'>confidence {r['confidence']} · projected "
             f"{r['projected_margin']:+.1f} / {r['projected_total']:.1f}</span>"
         )
-        parts.append(f"<p class='analysis'>{r['paragraph']}</p>")
+        for para in re.split(r"\n\s*\n", r["paragraph"] or ""):
+            parts.append(f"<p class='analysis'>{para}</p>")
         decision = json.loads(r["decision_table"] or "[]")
         if decision:
             body = "".join(

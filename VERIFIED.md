@@ -1083,3 +1083,20 @@ Week 11 against closing lines changes little (NYJ flips to LAC, still a loss):
 this would not have saved the week. Fingerprint `5baf21ec24`, named blind-v8;
 first slate is Week 12. 4 new tests; 10 tier/notation tests moved to put team
 strength on the line; full suite 441 passing.
+
+**blind-v9: team situations and a hypothetical in every write-up
+(2026-11-25).** Owner's call, prompted by MIN +3.5 in Week 11 (a quarterback
+new to the system against a strong SF, lost by 25). The blind reply now opens
+with `situation` (one or two sentences on each team right now: quarterback and
+how long he has been in the offence, who is missing, recent form and against
+whom), asked for before the factors so the scoring is done with it in view,
+and adds `hypothetical` after the factors: the game script the points imply,
+ending with a rough final score. The model's `paragraph` drops its "who wins
+and why" part to two paragraphs (matchup, what could flip it). The published
+paragraph reads: pick line, away situation, home situation, how it plays out,
+matchup, what could flip it. The site already splits on blank lines; the HTML
+report now does too. Stored replies without the new fields replay unchanged.
+Extra output is a few hundred tokens a game, roughly a cent. Fingerprint
+`31b432a177`, named blind-v9, superseding blind-v8 before it picked a game.
+3 new tests; full suite 444 passing. No live pick has been made with it, so
+the write-up has not been seen from the real model.

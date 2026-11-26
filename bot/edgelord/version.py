@@ -46,6 +46,11 @@ VERSIONS: dict[str, tuple[str, str]] = {
         "blind-v7, with team strength and home field counting half of their "
         "edge against the line; other factors in full (2026-11-25).",
     ),
+    "31b432a177": (
+        "blind-v9",
+        "blind-v8, with each team's current situation written before the "
+        "factors are scored and a hypothetical game script after (2026-11-25).",
+    ),
 }
 
 # Picks made before stamping began, named by week from VERIFIED.md. Coarse on

@@ -20,7 +20,7 @@ export interface Prediction {
   projected_total: number;
   /** One line, no statistics -- for scanning a slate. */
   headline?: string | null;
-  /** Two or three short paragraphs separated by a blank line. */
+  /** The pick line, each team's situation, how it plays out, then the matchup and what could flip it; separated by blank lines. */
   paragraph: string;
   key_factors: string[];
   /** The model's own ledger of what it weighed, including what argued against it. */

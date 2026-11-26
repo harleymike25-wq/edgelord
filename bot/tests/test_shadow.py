@@ -172,3 +172,29 @@ class TestOfficialPick:
         assert res["key_factors"][0] == "Team strength: BBB +4"
         assert [r["weight"] for r in res["decision_table"][:3]] == ["decisive", "strong", "moderate"]
         assert res["headline"] == "h"
+
+
+class TestSituationWriteUp:
+    def test_situations_then_hypothetical_then_the_model_paragraph(self):
+        pack = _pack(3.0)
+        out = _out(team_strength=3.0, pass_game=4.0)
+        out["situation"] = {"away": "New quarterback, two starts in.",
+                            "home": "Healthy and rolling."}
+        out["hypothetical"] = "BBB leads early and wins 27-20."
+        res = shadow.to_prediction(pack, out, shadow.assemble(pack, out, None))
+        paras = res["paragraph"].split("\n\n")
+        assert paras[0].startswith("Our number:")
+        assert paras[1:4] == ["AAA right now: New quarterback, two starts in.",
+                              "BBB right now: Healthy and rolling.",
+                              "How it plays out: BBB leads early and wins 27-20."]
+        assert paras[4] == "p"
+
+    def test_situation_is_asked_for_before_the_factors(self):
+        props = list(shadow.RESPONSE_SCHEMA["properties"])
+        assert props.index("situation") < props.index("factors") < props.index("hypothetical")
+
+    def test_a_stored_reply_without_them_still_replays(self):
+        pack = _pack(3.0)
+        out = _out(team_strength=3.0, pass_game=4.0)
+        res = shadow.to_prediction(pack, out, shadow.assemble(pack, out, None))
+        assert res["paragraph"].split("\n\n")[1] == "p"
