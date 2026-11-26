@@ -1055,3 +1055,13 @@ are still 20-14 on the season. Team strength (×1.155 correction) was the
 heaviest wrong factor in 4 of the 9. 4-9 or worse happens about 13% of weeks
 for a coin flipper. Coin flips are 18-21, -4.64 units on the season. Narratives
 not run.
+
+**Post-mortems, Weeks 11 and 10 (2026-11-25).** Owner approved ~$0.50. Week 11:
+9 losses, 9 explained, 0 failed, $0.41. Week 10's two open losses: 2 explained,
+$0.09. Total **$0.50** (month to date about $10.00). Verdicts: 8 thesis_wrong,
+3 thesis_right_variance (CHI, JAX, BAL). Two themes in the thesis_wrong set:
+injury/QB adjustments shaving a clearly stronger team's number (CAR, ARI, MIN,
+IND), and adjustments stacked on a team-strength rating that already held them
+(CIN, PIT@PHI). The TEN/DAL under was a projection far below the market against
+two weak pass defenses. Per the standing rule the prose does not reach a prompt;
+the PIT@CIN "pass" lesson conflicts with every-game-gets-a-pick and is ignored.
