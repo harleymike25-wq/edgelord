@@ -1100,3 +1100,13 @@ Extra output is a few hundred tokens a game, roughly a cent. Fingerprint
 `31b432a177`, named blind-v9, superseding blind-v8 before it picked a game.
 3 new tests; full suite 444 passing. No live pick has been made with it, so
 the write-up has not been seen from the real model.
+
+**First blind-v9 pick: GB at LA, Week 12 Wednesday (2026-11-25).** `refresh` +
+`snapshot-lines` (free), then `shadow --game 2026_12_GB_LA --official` on the
+owner's yes to ~$0.15: spent **$0.12** (month to date $10.12). Pick #612 **LA
+-2.5, lean**, confidence 56: factors LA by 5.8, LA by 4.7 after the
+team-strength discount, Elo LA by 3.9, edge 2.16; projected total 47 (market
+43.5, under the 7-point bar). Stamped `blind-v9+31b432a177 claude-opus-5-5
+medium`. The real model returned both situations and the hypothetical ("Rams
+26, Packers 21"), and the paragraph assembled in the intended order. Report
+rendered, synced to Firestore.
