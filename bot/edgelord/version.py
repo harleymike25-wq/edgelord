@@ -41,6 +41,11 @@ VERSIONS: dict[str, tuple[str, str]] = {
         "Blind factor sum with learned corrections; totals at a 7-point gap; "
         "early-line calls; quarterback reruns need two sources (2026-11-16).",
     ),
+    "5baf21ec24": (
+        "blind-v8",
+        "blind-v7, with team strength and home field counting half of their "
+        "edge against the line; other factors in full (2026-11-25).",
+    ),
 }
 
 # Picks made before stamping began, named by week from VERIFIED.md. Coarse on
@@ -73,6 +78,10 @@ def recipe() -> dict:
             "best_bet_baseline_edge": shadow.BEST_BET_BASELINE_EDGE,
             "lean_edge": shadow.LEAN_EDGE,
             "total_pick_edge": shadow.TOTAL_PICK_EDGE,
+        },
+        "market_priced": {
+            "factors": shadow.MARKET_PRICED,
+            "weight": shadow.MARKET_PRICED_WEIGHT,
         },
         "corrections": {
             "prior_sd": calibration.PRIOR_SD,

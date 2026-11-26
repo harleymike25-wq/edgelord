@@ -116,44 +116,44 @@ def _out(total=44.0, **points):
 
 class TestTotalPick:
     def test_a_small_total_gap_stays_a_spread_pick(self):
-        calc = shadow.assemble(_pack(3.0), _out(total=40.0, team_strength=5.0), None)
+        calc = shadow.assemble(_pack(3.0), _out(total=40.0, pass_game=5.0), None)
         assert calc["pick"]["type"] == "spread"
         assert calc["total_side"] == "under" and calc["total_edge"] == 4.5
 
     def test_a_big_total_gap_becomes_the_pick(self):
-        calc = shadow.assemble(_pack(3.0), _out(total=36.5, team_strength=5.0), None)
+        calc = shadow.assemble(_pack(3.0), _out(total=36.5, pass_game=5.0), None)
         assert calc["pick"] == {"type": "total", "side": "under", "edge": 8.0, "tier": "lean"}
 
     def test_over(self):
-        calc = shadow.assemble(_pack(3.0), _out(total=53.0, team_strength=3.5), None)
+        calc = shadow.assemble(_pack(3.0), _out(total=53.0, pass_game=3.5), None)
         assert calc["pick"]["side"] == "over"
 
     def test_the_spread_keeps_the_pick_when_its_edge_is_bigger(self):
         # Margin 12 against a line of 3 is 9 off; the total is 8 off.
-        calc = shadow.assemble(_pack(3.0), _out(total=36.5, team_strength=12.0), None)
+        calc = shadow.assemble(_pack(3.0), _out(total=36.5, pass_game=12.0), None)
         assert calc["pick"]["type"] == "spread"
 
     def test_exactly_at_the_bar_counts(self):
-        calc = shadow.assemble(_pack(3.0), _out(total=37.5, team_strength=4.0), None)
+        calc = shadow.assemble(_pack(3.0), _out(total=37.5, pass_game=4.0), None)
         assert calc["total_edge"] == shadow.TOTAL_PICK_EDGE
         assert calc["pick"]["type"] == "total"
 
     def test_a_total_is_never_a_best_bet(self):
-        calc = shadow.assemble(_pack(3.0), _out(total=30.0, team_strength=4.0), None)
+        calc = shadow.assemble(_pack(3.0), _out(total=30.0, pass_game=4.0), None)
         assert calc["pick"]["tier"] == "lean"
 
     def test_the_spread_fields_still_describe_the_spread(self):
         """Corrections and replays read these; a total pick must not change them."""
-        calc = shadow.assemble(_pack(3.0), _out(total=36.5, team_strength=5.0), None)
+        calc = shadow.assemble(_pack(3.0), _out(total=36.5, team_strength=3.0, pass_game=2.0), None)
         assert calc["pick_side"] == HOME and calc["edge"] == 2.0
 
     def test_no_total_line_means_a_spread_pick(self):
-        calc = shadow.assemble(_pack(3.0, total=None), _out(total=20.0, team_strength=5.0), None)
+        calc = shadow.assemble(_pack(3.0, total=None), _out(total=20.0, pass_game=5.0), None)
         assert calc["pick"]["type"] == "spread" and calc["total_edge"] is None
 
     def test_the_write_up_names_the_total_and_keeps_the_spread_lean(self):
         pack = _pack(3.0)
-        out = _out(total=36.5, team_strength=5.0)
+        out = _out(total=36.5, pass_game=5.0)
         pred = shadow.to_prediction(pack, out, shadow.assemble(pack, out, None))
         assert (pred["pick_type"], pred["pick_side"], pred["conviction"]) == ("total", "under", "lean")
         assert pred["paragraph"].startswith(
@@ -194,7 +194,7 @@ class TestStoredAndGraded:
         conn.execute(
             "INSERT INTO games (game_id, season, week, gameday, home_team, away_team) "
             "VALUES (?,2026,11,'2026-11-22',?,?)", (pack["game"]["game_id"], HOME, AWAY))
-        out = {**_out(total=36.5, team_strength=5.0), "_model": "m"}
+        out = {**_out(total=36.5, pass_game=5.0), "_model": "m"}
         calc = shadow.assemble(pack, out, None)
         result = shadow.to_prediction(pack, out, calc)
         result["timing"] = early.recommend(pack, "total", "under", "lean", now=THURSDAY)

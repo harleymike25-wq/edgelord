@@ -54,14 +54,14 @@ class TestAssemble:
         calc = shadow.assemble(_pack(spread=3.0), out, {"projected_home": 5.0},
                                {"multipliers": {"team_strength": 0.5}, "n_games": 40})
         assert calc["raw_margin"] == 6.0
-        assert calc["projected_margin"] == 4.0
+        assert calc["factor_margin"] == 4.0
         assert calc["raw_points"]["team_strength"] == 4.0
         assert calc["signed_points"]["team_strength"] == 2.0
         assert calc["calibration"]["n_games"] == 40
 
     def test_no_calibration_is_the_old_sum(self):
         calc = shadow.assemble(_pack(), _out(team_strength=4.0, home_field=2.0), None)
-        assert calc["projected_margin"] == calc["raw_margin"] == 6.0
+        assert calc["factor_margin"] == calc["raw_margin"] == 6.0
 
     def test_stored_pick_carries_raw_points_for_the_next_fit(self):
         pack = _pack(spread=3.0)

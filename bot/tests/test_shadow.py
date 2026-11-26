@@ -61,29 +61,32 @@ class TestAssemble:
     def test_margin_is_the_sum_of_the_factors(self):
         calc = shadow.assemble(_pack(), _out(team_strength=4.0, home_field=1.5,
                                              quarterback=-2.0), {"projected_home": 3.0})
-        assert calc["projected_margin"] == pytest.approx(3.5)
+        assert calc["factor_margin"] == pytest.approx(3.5)
+        # Line 3: team strength + home (5.5) is 2.5 past it and counts half.
+        assert calc["projected_margin"] == pytest.approx(3.0 + 0.5 * 2.5 - 2.0)
         assert calc["winner"] == HOME
         assert 0.5 < calc["home_win_prob"] < 0.7
 
+
     def test_best_bet_needs_both_numbers_past_the_line(self):
         # Line BBB -3. Factors say BBB by 7 (edge 4), Elo says BBB by 4.5 (edge 1.5).
-        calc = shadow.assemble(_pack(3.0), _out(team_strength=7.0), {"projected_home": 4.5})
+        calc = shadow.assemble(_pack(3.0), _out(team_strength=3.0, pass_game=4.0), {"projected_home": 4.5})
         assert (calc["pick_side"], calc["edge"], calc["baseline_edge"], calc["tier"]) == (
             HOME, 4.0, 1.5, "best_bet")
 
     def test_three_points_off_the_line_is_a_lean(self):
         # Blind sums sit 2.5-4 points off the line routinely; 3 is not a best bet.
-        calc = shadow.assemble(_pack(3.0), _out(team_strength=6.0), {"projected_home": 4.5})
+        calc = shadow.assemble(_pack(3.0), _out(team_strength=3.0, pass_game=3.0), {"projected_home": 4.5})
         assert (calc["edge"], calc["tier"]) == (3.0, "lean")
 
     def test_elo_on_the_other_side_caps_it_at_coin_flip(self):
-        calc = shadow.assemble(_pack(3.0), _out(team_strength=6.0), {"projected_home": 1.0})
+        calc = shadow.assemble(_pack(3.0), _out(team_strength=3.0, pass_game=3.0), {"projected_home": 1.0})
         assert calc["baseline_edge"] == -2.0
         assert calc["tier"] == "coin_flip"
 
     def test_underdog_side_reads_from_the_dog(self):
         # Line BBB -3; factors say AAA by 1, Elo says BBB by 1: both on AAA +3.
-        calc = shadow.assemble(_pack(3.0), _out(team_strength=-1.0), {"projected_home": 1.0})
+        calc = shadow.assemble(_pack(3.0), _out(team_strength=3.0, pass_game=-4.0), {"projected_home": 1.0})
         assert calc["pick_side"] == AWAY
         assert calc["edge"] == 4.0
         assert calc["baseline_edge"] == 2.0
@@ -91,10 +94,32 @@ class TestAssemble:
         assert calc["winner"] == AWAY
 
     def test_negative_points_are_floored(self):
-        out = _out(team_strength=2.0)
+        out = _out(pass_game=2.0)
         out["factors"]["weather"] = {"favors": HOME, "points": -3, "evidence": "thin", "reading": "x"}
-        assert shadow.assemble(_pack(), out, None)["projected_margin"] == 2.0
+        assert shadow.assemble(_pack(None), out, None)["projected_margin"] == 2.0
 
+
+class TestMarketPricedDiscount:
+    def test_team_strength_edge_counts_half(self):
+        # Line BBB -3; team strength says BBB by 7: 4 past the line, counts 2.
+        calc = shadow.assemble(_pack(3.0), _out(team_strength=7.0), {"projected_home": 4.5})
+        assert calc["factor_margin"] == 7.0
+        assert (calc["projected_margin"], calc["edge"], calc["tier"]) == (5.0, 2.0, "lean")
+
+    def test_other_factors_count_in_full(self):
+        # Team strength sits on the line; a quarterback edge of 2 is all edge.
+        calc = shadow.assemble(_pack(3.0), _out(team_strength=3.0, quarterback=2.0), None)
+        assert calc["edge"] == 2.0 and calc["pick_side"] == HOME
+
+    def test_a_qb_edge_can_flip_the_side_against_team_strength(self):
+        # Team strength says BBB by 5 (2 past the line, counts 1); a backup
+        # quarterback costs BBB 2: the pick is AAA +3.
+        calc = shadow.assemble(_pack(3.0), _out(team_strength=5.0, quarterback=-2.0), None)
+        assert calc["pick_side"] == AWAY and calc["edge"] == 1.0
+
+    def test_no_line_means_the_plain_sum(self):
+        calc = shadow.assemble(_pack(None), _out(team_strength=7.0), None)
+        assert calc["projected_margin"] == calc["factor_margin"] == 7.0
 
 class TestReport:
     @pytest.fixture
@@ -126,7 +151,7 @@ class TestOfficialPick:
     def test_pick_against_its_own_winner_says_so_plainly(self):
         # Line BBB -3; factors say BBB by 1: the pick is AAA +3 though BBB wins.
         pack = _pack(3.0)
-        out = _out(team_strength=1.0)
+        out = _out(team_strength=3.0, pass_game=-2.0)
         out["headline"] = "Bears edge it at home."
         calc = shadow.assemble(pack, out, {"projected_home": 0.5})
         res = shadow.to_prediction(pack, out, calc)
@@ -142,7 +167,8 @@ class TestOfficialPick:
         out = _out(team_strength=4.0, home_field=1.5, quarterback=2.5)
         calc = shadow.assemble(pack, out, {"projected_home": 5.0})
         res = shadow.to_prediction(pack, out, calc)
-        assert res["paragraph"].startswith("Our number: BBB by 8. The market: BBB by 3. The pick: BBB -3.")
+        assert res["paragraph"].startswith("Our number: BBB by 6.8 (the factors alone say BBB by 8; team strength and "
+            "home field count half against the line). The market: BBB by 3. The pick: BBB -3.")
         assert res["key_factors"][0] == "Team strength: BBB +4"
         assert [r["weight"] for r in res["decision_table"][:3]] == ["decisive", "strong", "moderate"]
         assert res["headline"] == "h"

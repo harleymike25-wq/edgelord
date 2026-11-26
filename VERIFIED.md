@@ -1065,3 +1065,21 @@ IND), and adjustments stacked on a team-strength rating that already held them
 (CIN, PIT@PHI). The TEN/DAL under was a projection far below the market against
 two weak pass defenses. Per the standing rule the prose does not reach a prompt;
 the PIT@CIN "pass" lesson conflicts with every-game-gets-a-pick and is ignored.
+
+**blind-v8: team strength discounted against the line (2026-11-25).** Owner's
+call after Week 11. `shadow.assemble` now projects line + 0.5 x (team strength
++ home field - line) + the other factors, so the market-priced part of the
+disagreement counts half and quarterback, availability, matchups, rest, form
+and weather count in full. With no line it is the plain sum. The stored
+`projected_margin` is the discounted number (so edge, tier, confidence, sync
+and post-mortems agree); `factor_margin` keeps the corrected sum, and the pick
+paragraph names both when they differ. Calibration still fits raw points, so it
+is unaffected. Evidence, on 69 graded blind spread picks: cover margin -0.88
+(se 0.66) per point of team-strength-and-home edge, +0.80 (se 0.65) per point of
+the rest; picks following team strength 22-29, picks where QB/injury points
+flipped the side 10-2. 0.5 is a round hedge, not the in-sample best (0.0
+replays 41-25 on the same games, which is fitting them). A rough replay of
+Week 11 against closing lines changes little (NYJ flips to LAC, still a loss):
+this would not have saved the week. Fingerprint `5baf21ec24`, named blind-v8;
+first slate is Week 12. 4 new tests; 10 tier/notation tests moved to put team
+strength on the line; full suite 441 passing.

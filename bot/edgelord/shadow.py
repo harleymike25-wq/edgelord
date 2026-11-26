@@ -96,6 +96,21 @@ LEAN_EDGE = 1.0
 # never best bets: there is no computed baseline for a total to agree with.
 TOTAL_PICK_EDGE = 7.0
 
+# How much of the factors' disagreement with the line counts when it comes from
+# what the market already prices: overall team strength and home field. The
+# rest of the factors (quarterback, availability, matchups, rest, form,
+# weather) count in full. Set to 0.5 at the owner's call on 2026-11-25 (Week 11
+# went 4-9). On the 69 graded blind spread picks to then, the cover margin
+# against the line was -0.88 (se 0.66) per point of team-strength-and-home edge
+# and +0.80 (se 0.65) per point of the other factors; picks that just followed
+# team strength went 22-29, and picks where QB or injury points flipped the
+# side went 10-2. 0.5 is a round hedge, not the in-sample best: 0.0 replays
+# 41-25 on those same games, which is fitting the games, not learning from them.
+# The projected margin becomes line + weight * (team strength + home - line)
+# + the other factors; with no line it is the plain sum.
+MARKET_PRICED = ("team_strength", "home_field")
+MARKET_PRICED_WEIGHT = 0.5
+
 
 # --- what the model sees -----------------------------------------------------
 
@@ -426,11 +441,18 @@ def assemble(pack: dict, out: dict, baseline: dict | None,
     multipliers = (calibration or {}).get("multipliers")
     signed = ({k: round(v * multipliers.get(k, 1.0), 3) for k, v in raw.items()}
               if multipliers else dict(raw))
-    margin = round(sum(signed.values()), 2)
+    factor_margin = round(sum(signed.values()), 2)
 
     market = pack.get("market") or {}
     line = market.get("current_spread_home")
     base = (baseline or {}).get("projected_home")
+
+    # Discount the part of the disagreement the market already prices.
+    margin = factor_margin
+    if line is not None:
+        core = sum(signed[k] for k in MARKET_PRICED)
+        margin = round(float(line) + MARKET_PRICED_WEIGHT * (core - float(line))
+                       + (factor_margin - core), 2)
 
     pick = edge = base_edge = None
     tier = None
@@ -475,6 +497,8 @@ def assemble(pack: dict, out: dict, baseline: dict | None,
         "calibration": {"multipliers": multipliers,
                         "n_games": (calibration or {}).get("n_games", 0)},
         "projected_margin": margin,
+        # The corrected factor sum before the market discount.
+        "factor_margin": factor_margin,
         "home_win_prob": round(win_prob(margin), 3),
         "winner": home if margin > 0 else away if margin < 0 else None,
         "line_home": line,
@@ -532,6 +556,12 @@ def to_prediction(pack: dict, out: dict, calc: dict) -> dict:
     shown = "pk" if not side_line else f"{-side_line:+g}"
 
     ours = f"{winner} by {_fmt(round(abs(margin), 1))}" if winner else "a dead heat"
+    factor_margin = calc.get("factor_margin")
+    if factor_margin is not None and round(factor_margin, 1) != round(margin, 1):
+        f_side = home if factor_margin > 0 else away if factor_margin < 0 else None
+        alone = f"{f_side} by {_fmt(round(abs(factor_margin), 1))}" if f_side else "a dead heat"
+        ours += (f" (the factors alone say {alone}; team strength and home field "
+                 f"count half against the line)")
     if not line_home:
         market = "a pick'em"
     else:
